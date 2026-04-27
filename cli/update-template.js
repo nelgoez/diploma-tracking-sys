@@ -1,0 +1,2013 @@
+#!/usr/bin/env bun
+/**
+ * @fileoverview UPEX Template Updater - CLI para sincronizar proyectos con el template
+ *
+ * Este script permite mantener proyectos derivados sincronizados con el template
+ * oficial de UPEX (ai-driven-project-starter). Usa una estrategia de "merge inteligente"
+ * que actualiza archivos del template sin eliminar archivos personalizados del usuario.
+ *
+ * @description
+ * Características principales:
+ * - Menú interactivo para selección de componentes
+ * - Actualización por roles (QA, Dev, DevOps, PO)
+ * - Actualización por fases específicas (1-14)
+ * - Sistema de backups automáticos
+ * - Merge inteligente (preserva archivos del usuario)
+ * - MergeResult tracking (success/error counts per operation)
+ * - --dry-run flag (preview changes without modifying files)
+ * - --rollback flag (restore from most recent backup)
+ * - Version tracking (.template-version.json)
+ * - Enhanced self-update with major version detection
+ * - Variable detection (warns about unfilled {{VARIABLE}} placeholders)
+ * - Migration detection (upgrade notice for pre-variables consumers)
+ * - Sync summary (clean table of results)
+ *
+ * @requires gh - GitHub CLI debe estar instalado y autenticado
+ * @requires bun - Runtime de JavaScript (o Node.js compatible)
+ *
+ * @example
+ * // Menú interactivo
+ * bun up
+ *
+ * @example
+ * // Actualizar todo
+ * bun up all
+ *
+ * @example
+ * // Actualizar por rol
+ * bun up prompts --rol qa
+ *
+ * @example
+ * // Actualizar configuración de desarrollo
+ * bun up vscode husky tooling
+ *
+ * @example
+ * // Preview sin modificar
+ * bun up all --dry-run
+ *
+ * @example
+ * // Restaurar desde backup
+ * bun up --rollback
+ *
+ * @see docs/workflows/update-template-guide.md - Guía completa de uso
+ *
+ * @author UPEX Galaxy
+ * @version 4.0
+ */
+
+const { execSync } = require('node:child_process');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const readline = require('node:readline');
+
+// ============================================================================
+// CONFIGURATION
+// ============================================================================
+
+const CLI_VERSION = '4.0';
+const TEMPLATE_REPO = 'upex-galaxy/ai-driven-project-starter';
+const TEMP_DIR = path.join(os.tmpdir(), 'aicode-template-update');
+const VERSION_FILE = '.template-version.json';
+
+// Phase configuration for .prompts/
+const PHASE_CONFIG = {
+  1: { name: 'Constitution', dir: 'fase-1-constitution' },
+  2: { name: 'Architecture', dir: 'fase-2-architecture' },
+  3: { name: 'Infrastructure', dir: 'fase-3-infrastructure' },
+  4: { name: 'Specification', dir: 'fase-4-specification' },
+  5: { name: 'Shift-Left Testing', dir: 'fase-5-shift-left-testing' },
+  6: { name: 'Planning', dir: 'fase-6-planning' },
+  7: { name: 'Implementation', dir: 'fase-7-implementation' },
+  8: { name: 'Code Review', dir: 'fase-8-code-review' },
+  9: { name: 'Deployment Staging', dir: 'fase-9-deployment-staging' },
+  10: { name: 'Exploratory Testing', dir: 'fase-10-exploratory-testing' },
+  11: { name: 'Test Documentation', dir: 'fase-11-test-documentation' },
+  12: { name: 'Test Automation', dir: 'fase-12-test-automation' },
+  13: { name: 'Production Deployment', dir: 'fase-13-production-deployment' },
+  14: { name: 'Shift-Right Testing', dir: 'fase-14-shift-right-testing' },
+};
+
+// Role-based phase groupings
+const ROLE_PHASES = {
+  'qa': {
+    phases: [5, 10, 11, 12],
+    description: 'Shift-Left, Exploratory, Documentation, Automation',
+  },
+  'qa-full': {
+    phases: [4, 5, 10, 11, 12],
+    description: 'QA + Specification (contexto de negocio)',
+  },
+  'dev': { phases: [6, 7, 8], description: 'Planning, Implementation, Code Review' },
+  'devops': {
+    phases: [3, 9, 13, 14],
+    description: 'Infrastructure, Staging, Production, Monitoring',
+  },
+  'po': { phases: [1, 2, 4], description: 'Constitution, Architecture, Specification' },
+  'setup': { phases: [1, 2, 3], description: 'Fases sincronicas iniciales' },
+};
+
+// Tooling files - universal framework configuration files
+// NOTE: Excludes project-specific files (tsconfig.json, eslint.config.js, .gitignore)
+const TOOLING_FILES = ['.editorconfig', '.prettierrc', '.prettierignore'];
+
+// Example/template files for user configuration
+const EXAMPLE_FILES = [];
+
+// NOTE: No hardcoded file lists for directories - all use mergeDirectory() for full sync
+// This ensures any new files/folders in the template are automatically included
+
+// ============================================================================
+// TERMINAL COLORS
+// ============================================================================
+
+/** @description ANSI escape codes para colorear output en terminal */
+const colors = {
+  green: '\x1B[32m',
+  yellow: '\x1B[33m',
+  red: '\x1B[31m',
+  blue: '\x1B[34m',
+  cyan: '\x1B[36m',
+  magenta: '\x1B[35m',
+  bold: '\x1B[1m',
+  dim: '\x1B[2m',
+  reset: '\x1B[0m',
+};
+
+/** @param {string} message - Título de sección */
+function logHeader(message) {
+  console.log(`\n${colors.bold}${colors.cyan}${message}${colors.reset}`);
+}
+
+/** @param {string} message - Mensaje de éxito */
+function logSuccess(message) {
+  console.log(`${colors.green}✅ ${message}${colors.reset}`);
+}
+
+/** @param {string} message - Mensaje de advertencia */
+function logWarning(message) {
+  console.log(`${colors.yellow}⚠️  ${message}${colors.reset}`);
+}
+
+/** @param {string} message - Mensaje de error */
+function logError(message) {
+  console.log(`${colors.red}❌ ${message}${colors.reset}`);
+}
+
+/** @param {string} message - Mensaje informativo */
+function logInfo(message) {
+  console.log(`${colors.blue}ℹ️  ${message}${colors.reset}`);
+}
+
+/** @param {string} message - Mensaje de paso/progreso */
+function logStep(message) {
+  console.log(`${colors.yellow}📦 ${message}${colors.reset}`);
+}
+
+/** @param {string} message - Mensaje de operación merge */
+function logMerge(message) {
+  console.log(`${colors.magenta}🔀 ${message}${colors.reset}`);
+}
+
+// ============================================================================
+// DEPENDENCY CHECK
+// ============================================================================
+
+/**
+ * Check if a npm package is installed locally
+ * Uses filesystem check instead of require.resolve for Bun compatibility
+ */
+function isPackageInstalled(packageName) {
+  // Check in node_modules (works with both npm and bun)
+  const nodeModulesPath = path.join(process.cwd(), 'node_modules', packageName);
+  if (fs.existsSync(nodeModulesPath)) {
+    return true;
+  }
+
+  // Also check for scoped packages like @inquirer/prompts
+  if (packageName.startsWith('@')) {
+    const [scope, name] = packageName.split('/');
+    const scopedPath = path.join(process.cwd(), 'node_modules', scope, name);
+    if (fs.existsSync(scopedPath)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Prompt nativo usando readline (sin dependencias externas).
+ * Se usa como fallback cuando @inquirer/prompts no está instalado.
+ *
+ * @param {string} question - Pregunta a mostrar al usuario
+ * @returns {Promise<string>} Respuesta del usuario en minúsculas y sin espacios
+ */
+function nativePrompt(question) {
+  return new Promise((resolve) => {
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+    });
+
+    rl.question(question, (answer) => {
+      rl.close();
+      resolve(answer.trim().toLowerCase());
+    });
+  });
+}
+
+/**
+ * Check if interactive mode dependencies are available.
+ * If not, offer to install them.
+ * @returns {Promise<boolean>} true if dependencies are ready, false if user declined
+ */
+async function ensureDependencies() {
+  if (isPackageInstalled('@inquirer/prompts')) {
+    return true;
+  }
+
+  console.log(`
+${colors.yellow}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${colors.reset}
+${colors.bold}${colors.yellow}⚠️  Dependencia faltante: @inquirer/prompts${colors.reset}
+${colors.yellow}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${colors.reset}
+
+Esta dependencia es necesaria para el ${colors.cyan}menú interactivo${colors.reset} del script.
+
+${colors.dim}Sin ella, solo puedes usar comandos directos como:${colors.reset}
+  ${colors.green}bun up all${colors.reset}              - Actualizar todo
+  ${colors.green}bun up docs${colors.reset}             - Actualizar docs/
+  ${colors.green}bun up prompts --rol qa${colors.reset} - Actualizar prompts para QA
+
+${colors.bold}¿Deseas instalar la dependencia ahora?${colors.reset}
+`);
+
+  const answer = await nativePrompt(`${colors.cyan}[Y/n]:${colors.reset} `);
+
+  if (answer === '' || answer === 'y' || answer === 'yes' || answer === 'si' || answer === 's') {
+    console.log(`\n${colors.blue}📦 Instalando @inquirer/prompts...${colors.reset}\n`);
+
+    try {
+      execSync('bun add @inquirer/prompts', { stdio: 'inherit' });
+      console.log(`
+${colors.green}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${colors.reset}
+${colors.bold}${colors.green}✅ Dependencia instalada correctamente${colors.reset}
+${colors.green}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${colors.reset}
+
+Ahora puedes ejecutar el script nuevamente:
+
+  ${colors.cyan}bun up${colors.reset}          - Menú interactivo
+  ${colors.cyan}bun up all${colors.reset}      - Actualizar todo
+  ${colors.cyan}bun up help${colors.reset}     - Ver opciones
+
+`);
+      process.exit(0);
+    }
+    catch (error) {
+      logError(`Error instalando dependencia: ${error.message}`);
+      console.log(`\n${colors.yellow}Intenta instalar manualmente:${colors.reset}`);
+      console.log(`  ${colors.green}bun add @inquirer/prompts${colors.reset}\n`);
+      process.exit(1);
+    }
+  }
+  else {
+    console.log(`\n${colors.yellow}Instalación cancelada.${colors.reset}`);
+    console.log('\nPuedes usar comandos directos sin el menú interactivo:');
+    console.log(`  ${colors.green}bun up all${colors.reset}      - Actualizar todo`);
+    console.log(`  ${colors.green}bun up help${colors.reset}     - Ver todas las opciones\n`);
+    process.exit(0);
+  }
+}
+
+// ============================================================================
+// MERGE UTILITIES
+// ============================================================================
+
+/**
+ * Merge files from source to destination without deleting user files.
+ * Only overwrites files that exist in source (template).
+ * Preserves any files/folders in destination that don't exist in source.
+ *
+ * @param {string} srcDir - Source directory (from template)
+ * @param {string} destDir - Destination directory (user's project)
+ * @param {string} prefix - Prefix for logging (indentation)
+ * @returns {{success: number, errors: number}} Count of files synced and errors
+ */
+function mergeDirectory(srcDir, destDir, prefix = '') {
+  let success = 0;
+  let errors = 0;
+
+  // Ensure destination exists
+  fs.mkdirSync(destDir, { recursive: true });
+
+  // Get all items from source
+  const items = fs.readdirSync(srcDir, { withFileTypes: true });
+
+  for (const item of items) {
+    const srcPath = path.join(srcDir, item.name);
+    const destPath = path.join(destDir, item.name);
+
+    try {
+      if (item.isDirectory()) {
+        // Recursively merge subdirectory
+        const sub = mergeDirectory(srcPath, destPath, `${prefix}  `);
+        success += sub.success;
+        errors += sub.errors;
+        logSuccess(`${prefix}${item.name}/`);
+      }
+      else {
+        // Copy file (overwrites if exists)
+        fs.cpSync(srcPath, destPath);
+        success++;
+        logSuccess(`${prefix}${item.name}`);
+      }
+    }
+    catch (err) {
+      logWarning(`${prefix}Skipped ${item.name}: ${err.message || String(err)}`);
+      errors++;
+    }
+  }
+
+  return { success, errors };
+}
+
+/**
+ * Count files in a directory recursively (for dry-run mode).
+ *
+ * @param {string} dir - Directory to count files in
+ * @returns {number} Total file count
+ */
+function countFilesInDir(dir) {
+  if (!fs.existsSync(dir)) { return 0; }
+  let count = 0;
+  const items = fs.readdirSync(dir, { withFileTypes: true });
+  for (const item of items) {
+    if (item.isDirectory()) {
+      count += countFilesInDir(path.join(dir, item.name));
+    }
+    else {
+      count++;
+    }
+  }
+  return count;
+}
+
+/**
+ * Recursively collect all file paths in a directory.
+ *
+ * @param {string} dir - Directory to collect files from
+ * @returns {string[]} Array of absolute file paths
+ */
+function collectFiles(dir) {
+  const files = [];
+  if (!fs.existsSync(dir)) { return files; }
+
+  const items = fs.readdirSync(dir, { withFileTypes: true });
+  for (const item of items) {
+    const fullPath = path.join(dir, item.name);
+    if (item.isDirectory()) {
+      files.push(...collectFiles(fullPath));
+    }
+    else {
+      files.push(fullPath);
+    }
+  }
+  return files;
+}
+
+// ============================================================================
+// HELP
+// ============================================================================
+
+function showHelp() {
+  console.log(`
+${colors.bold}${colors.cyan}📦 UPEX Template Updater v${CLI_VERSION} - Ayuda${colors.reset}
+
+${colors.bold}USO:${colors.reset}
+  bun up                        ${colors.dim}# Menu interactivo${colors.reset}
+  bun up <comando> [opciones]   ${colors.dim}# Ejecucion directa${colors.reset}
+
+${colors.bold}COMANDOS:${colors.reset}
+  all           Actualiza todo (merge completo de todos los directorios)
+  prompts       Actualiza .prompts/ (menu interactivo o con flags)
+  books         Actualiza .books/ (manuales para humanos, mismas flags que prompts)
+  docs          Actualiza docs/ (merge completo del directorio)
+  context       Actualiza .context/ (merge completo del directorio)
+  templates     Actualiza templates/mcp/ (merge completo del directorio)
+  scripts       Actualiza scripts/ (merge completo del directorio)
+  cli           Actualiza cli/ (Xray CLI y otras herramientas)
+  agents        Actualiza .agents/ (skills de agentes IA)
+  claude        Actualiza .claude/ (settings.json + skill symlinks)
+  vscode        Actualiza .vscode/ (extensions.json, settings.json)
+  husky         Actualiza .husky/ (git hooks)
+  tooling       Actualiza archivos de configuracion del framework
+  examples      Actualiza archivos de ejemplo
+  rollback      Restaura desde el backup mas reciente
+  help          Muestra esta ayuda
+
+${colors.bold}FLAGS GLOBALES:${colors.reset}
+  --dry-run     Preview de cambios sin modificar archivos
+  --rollback    Restaura desde el backup mas reciente
+
+${colors.bold}FLAGS PARA 'prompts' y 'books':${colors.reset}
+  --all         Todas las fases (1-14) + standalone
+  --fase N      Fases especificas (ej: --fase 5 o --fase 5,10,11)
+  --rol ROLE    Por rol (ver roles disponibles)
+  --standalone  Solo archivos standalone
+
+${colors.bold}ROLES DISPONIBLES:${colors.reset}
+  qa       ${colors.dim}-> Fases 5, 10, 11, 12 (Testing)${colors.reset}
+  qa-full  ${colors.dim}-> Fases 4, 5, 10, 11, 12 (Testing + Specification)${colors.reset}
+  dev      ${colors.dim}-> Fases 6, 7, 8 (Desarrollo)${colors.reset}
+  devops   ${colors.dim}-> Fases 3, 9, 13, 14 (Infraestructura)${colors.reset}
+  po       ${colors.dim}-> Fases 1, 2, 4 (Producto)${colors.reset}
+  setup    ${colors.dim}-> Fases 1, 2, 3 (Setup inicial)${colors.reset}
+
+${colors.bold}MERGE INTELIGENTE:${colors.reset}
+  Este script sincroniza TODOS los archivos del template:
+  - Actualiza/agrega cualquier archivo que exista en el template
+  - Preserva archivos/carpetas creados por el usuario (no en template)
+  - No elimina nada que no exista en el template
+  - Sin listas hardcodeadas: nuevos archivos del template se incluyen automaticamente
+
+${colors.bold}EJEMPLOS:${colors.reset}
+  bun up                        ${colors.dim}# Menu interactivo${colors.reset}
+  bun up all                    ${colors.dim}# Actualiza todo${colors.reset}
+  bun up prompts                ${colors.dim}# Menu para elegir fases${colors.reset}
+  bun up prompts --rol qa-full  ${colors.dim}# QA + Specification${colors.reset}
+  bun up prompts --fase 7,8     ${colors.dim}# Fases 7 y 8${colors.reset}
+  bun up books --all            ${colors.dim}# Todos los manuales${colors.reset}
+  bun up books --rol qa         ${colors.dim}# Manuales de QA${colors.reset}
+  bun up docs context           ${colors.dim}# Multiples componentes${colors.reset}
+  bun up vscode husky           ${colors.dim}# Config de VS Code y git hooks${colors.reset}
+  bun up tooling examples       ${colors.dim}# Archivos de configuracion${colors.reset}
+  bun up all --dry-run          ${colors.dim}# Preview sin modificar${colors.reset}
+  bun up --rollback             ${colors.dim}# Restaurar ultimo backup${colors.reset}
+`);
+}
+
+// ============================================================================
+// INTERACTIVE MENUS
+// ============================================================================
+
+async function showMainMenu() {
+  const { checkbox } = await import('@inquirer/prompts');
+
+  return await checkbox({
+    message: 'Que deseas actualizar?',
+    instructions: '(Usa las flechas, ESPACIO para seleccionar, ENTER para confirmar)',
+    choices: [
+      { name: 'Todo (all)', value: 'all' },
+      { name: 'Prompts (.prompts/)', value: 'prompts' },
+      { name: 'Books (.books/) - Manuales para humanos', value: 'books' },
+      { name: 'Documentacion (docs/)', value: 'docs' },
+      { name: 'Context (.context/)', value: 'context' },
+      { name: 'Templates MCP (templates/mcp/)', value: 'templates' },
+      { name: 'Scripts de actualizacion', value: 'scripts' },
+      { name: 'CLI Tools (cli/) - Xray CLI', value: 'cli' },
+      { name: 'VS Code (.vscode/)', value: 'vscode' },
+      { name: 'Husky (.husky/) - Git hooks', value: 'husky' },
+      { name: 'Agents (.agents/) - Skills de agentes IA', value: 'agents' },
+      { name: 'Claude (.claude/) - Settings y skill symlinks', value: 'claude' },
+      { name: 'Tooling - Archivos de configuracion', value: 'tooling' },
+      { name: 'Examples - Archivos de ejemplo', value: 'examples' },
+    ],
+  });
+}
+
+async function showPromptsMenu() {
+  const { select } = await import('@inquirer/prompts');
+
+  const mode = await select({
+    message: 'Que fases deseas actualizar?',
+    choices: [
+      { name: 'Todas las fases (1-14) + standalone', value: 'all' },
+      { name: 'Por rol...', value: 'role' },
+      { name: 'Fases especificas...', value: 'phases' },
+      { name: 'Solo archivos standalone (git-flow, workflows)', value: 'standalone' },
+    ],
+  });
+
+  switch (mode) {
+    case 'all':
+      return { phases: Object.keys(PHASE_CONFIG).map(Number), standalone: true };
+    case 'role':
+      return await showRoleMenu();
+    case 'phases':
+      return await showPhasesMenu();
+    case 'standalone':
+      return { phases: [], standalone: true };
+  }
+}
+
+async function showRoleMenu() {
+  const { select } = await import('@inquirer/prompts');
+
+  const role = await select({
+    message: 'Selecciona un rol:',
+    choices: Object.entries(ROLE_PHASES).map(([key, value]) => ({
+      name: `${key.toUpperCase()} (fases ${value.phases.join(', ')}) - ${value.description}`,
+      value: key,
+    })),
+  });
+
+  return { phases: ROLE_PHASES[role].phases, standalone: false };
+}
+
+async function showPhasesMenu() {
+  const { checkbox } = await import('@inquirer/prompts');
+
+  const phases = await checkbox({
+    message: 'Selecciona las fases a actualizar:',
+    instructions: '(ESPACIO para seleccionar, ENTER para confirmar)',
+    choices: Object.entries(PHASE_CONFIG).map(([num, config]) => ({
+      name: `Fase ${num}: ${config.name}`,
+      value: Number(num),
+    })),
+  });
+
+  return { phases, standalone: false };
+}
+
+// ============================================================================
+// ARGUMENT PARSING
+// ============================================================================
+
+/**
+ * Parsea argumentos de línea de comandos.
+ *
+ * @param {string[]} args - Array de argumentos (process.argv.slice(2))
+ * @returns {{commands: string[], phases: number[]|null, role: string|null, standalone: boolean, all: boolean, help: boolean, dryRun: boolean, rollback: boolean}}
+ */
+function parseArgs(args) {
+  const result = {
+    commands: [],
+    phases: null,
+    role: null,
+    standalone: false,
+    all: false,
+    help: false,
+    dryRun: false,
+    rollback: false,
+  };
+
+  // Support both 'guidelines' (legacy) and 'context' (new)
+  const validCommands = [
+    'all',
+    'prompts',
+    'books',
+    'docs',
+    'context',
+    'guidelines',
+    'templates',
+    'scripts',
+    'cli',
+    'vscode',
+    'husky',
+    'tooling',
+    'examples',
+    'help',
+    'rollback',
+  ];
+
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+
+    if (arg === 'help' || arg === '--help' || arg === '-h') {
+      result.help = true;
+    }
+    else if (arg === '--all') {
+      result.all = true;
+    }
+    else if (arg === '--dry-run') {
+      result.dryRun = true;
+    }
+    else if (arg === '--rollback' || arg === 'rollback') {
+      result.rollback = true;
+    }
+    else if (arg === '--standalone') {
+      result.standalone = true;
+    }
+    else if (arg === '--fase' || arg === '--phase') {
+      const nextArg = args[++i];
+      if (nextArg) {
+        result.phases = nextArg
+          .split(',')
+          .map(Number)
+          .filter(n => n >= 1 && n <= 14);
+      }
+    }
+    else if (arg === '--rol' || arg === '--role') {
+      const nextArg = args[++i];
+      if (nextArg && ROLE_PHASES[nextArg]) {
+        result.role = nextArg;
+        result.phases = ROLE_PHASES[nextArg].phases;
+      }
+      else if (nextArg) {
+        logError(`Rol desconocido: ${nextArg}`);
+        logInfo(`Roles disponibles: ${Object.keys(ROLE_PHASES).join(', ')}`);
+        process.exit(1);
+      }
+    }
+    else if (validCommands.includes(arg)) {
+      // Map 'guidelines' to 'context' for backwards compatibility
+      result.commands.push(arg === 'guidelines' ? 'context' : arg);
+    }
+    else if (!arg.startsWith('-')) {
+      logWarning(`Comando desconocido: ${arg}`);
+    }
+  }
+
+  return result;
+}
+
+// ============================================================================
+// PREREQUISITES
+// ============================================================================
+
+/**
+ * Verifica si un comando CLI está disponible en el sistema.
+ *
+ * @param {string} command - Comando a verificar (ej: 'gh', 'node')
+ * @param {string} name - Nombre descriptivo para mensajes de error
+ * @returns {boolean} true si el comando existe, false si no
+ */
+function checkCommand(command, name) {
+  try {
+    execSync(`${command} --version`, { stdio: 'ignore' });
+    return true;
+  }
+  catch {
+    logError(`${name} no esta instalado`);
+    return false;
+  }
+}
+
+/**
+ * Valida que GitHub CLI esté instalado y autenticado.
+ * Termina el proceso si no cumple los requisitos.
+ *
+ * @returns {Promise<void>}
+ */
+async function validatePrerequisites() {
+  if (!checkCommand('gh', 'GitHub CLI (gh)')) {
+    console.log('\nInstalalo con:');
+    if (process.platform === 'darwin') {
+      console.log('  brew install gh');
+    }
+    else if (process.platform === 'win32') {
+      console.log('  winget install GitHub.cli');
+    }
+    else {
+      console.log('  sudo apt install gh  # Ubuntu/Debian');
+      console.log('  O visita: https://cli.github.com/');
+    }
+    process.exit(1);
+  }
+
+  try {
+    execSync('gh auth status', { stdio: 'ignore' });
+  }
+  catch {
+    logWarning('No estas autenticado en GitHub CLI');
+    console.log('Ejecuta: gh auth login');
+    process.exit(1);
+  }
+}
+
+// ============================================================================
+// BACKUP
+// ============================================================================
+
+/**
+ * Crea un backup de los componentes antes de actualizarlos.
+ * Los backups se guardan en .backups/update-YYYY-MM-DD-HHMMSS/
+ *
+ * @param {string[]} components - Lista de componentes a respaldar ('prompts', 'docs', etc.)
+ * @returns {string} Ruta del directorio de backup creado
+ */
+function createBackup(components) {
+  logStep('Creando backup...');
+
+  const timestamp
+    = `${new Date().toISOString().replace(/[:.]/g, '-').split('T')[0]
+    }-${
+      new Date().toTimeString().split(' ')[0].replace(/:/g, '')}`;
+  const backupDir = path.join('.backups', `update-${timestamp}`);
+
+  fs.mkdirSync(backupDir, { recursive: true });
+
+  const backupMap = {
+    prompts: { src: '.prompts', dest: '.prompts' },
+    books: { src: '.books', dest: '.books' },
+    docs: { src: 'docs', dest: 'docs' },
+    context: { src: '.context', dest: '.context' },
+    templates: { src: 'templates/mcp', dest: 'templates/mcp' },
+    scripts: { src: 'scripts', dest: 'scripts' },
+    cli: { src: 'cli', dest: 'cli' },
+    vscode: { src: '.vscode', dest: '.vscode' },
+    husky: { src: '.husky', dest: '.husky' },
+  };
+
+  for (const comp of components) {
+    const mapping = backupMap[comp];
+    if (mapping && fs.existsSync(mapping.src)) {
+      const destPath = path.join(backupDir, mapping.dest);
+      fs.mkdirSync(path.dirname(destPath), { recursive: true });
+      fs.cpSync(mapping.src, destPath, { recursive: true });
+    }
+  }
+
+  // Backup tooling files
+  if (components.includes('tooling')) {
+    for (const file of TOOLING_FILES) {
+      if (fs.existsSync(file)) {
+        fs.cpSync(file, path.join(backupDir, file));
+      }
+    }
+  }
+
+  // Backup example files
+  if (components.includes('examples')) {
+    for (const file of EXAMPLE_FILES) {
+      if (fs.existsSync(file)) {
+        fs.cpSync(file, path.join(backupDir, file));
+      }
+    }
+  }
+
+  if (fs.existsSync('context-engineering.md')) {
+    fs.cpSync('context-engineering.md', path.join(backupDir, 'context-engineering.md'));
+  }
+
+  logSuccess(`Backup guardado en: ${backupDir}`);
+  return backupDir;
+}
+
+/**
+ * Restaura archivos desde el backup más reciente en .backups/.
+ * Lista todos los backups disponibles, muestra el más reciente,
+ * y copia los archivos de vuelta al proyecto.
+ */
+function rollbackFromBackup() {
+  logHeader('🔄 Rollback desde Backup');
+
+  const backupsDir = '.backups';
+  if (!fs.existsSync(backupsDir)) {
+    logError('No se encontraron backups. El directorio .backups/ no existe.');
+    process.exit(1);
+  }
+
+  const backups = fs.readdirSync(backupsDir, { withFileTypes: true })
+    .filter(d => d.isDirectory() && d.name.startsWith('update-'))
+    .map(d => d.name)
+    .sort()
+    .reverse();
+
+  if (backups.length === 0) {
+    logError('No se encontraron backups en .backups/');
+    process.exit(1);
+  }
+
+  const latest = backups[0];
+  const backupPath = path.join(backupsDir, latest);
+
+  logInfo(`Se encontraron ${backups.length} backup${backups.length > 1 ? 's' : ''}:`);
+  for (const b of backups.slice(0, 5)) {
+    const marker = b === latest ? `${colors.green}  (mas reciente)${colors.reset}` : '';
+    console.log(`   ${colors.dim}${b}${colors.reset}${marker}`);
+  }
+  if (backups.length > 5) {
+    console.log(`   ${colors.dim}... y ${backups.length - 5} mas${colors.reset}`);
+  }
+
+  console.log('');
+  logStep(`Restaurando desde: ${latest}`);
+
+  // Walk the backup directory and copy files back
+  let restored = 0;
+  const restoreDir = (srcDir, destDir) => {
+    const items = fs.readdirSync(srcDir, { withFileTypes: true });
+    for (const item of items) {
+      const srcPath = path.join(srcDir, item.name);
+      const destPath = path.join(destDir, item.name);
+      if (item.isDirectory()) {
+        fs.mkdirSync(destPath, { recursive: true });
+        restoreDir(srcPath, destPath);
+      }
+      else {
+        fs.cpSync(srcPath, destPath);
+        restored++;
+      }
+    }
+  };
+
+  try {
+    restoreDir(backupPath, process.cwd());
+    logSuccess(`Restaurados ${restored} archivos desde ${latest}`);
+  }
+  catch (err) {
+    logError(`Rollback fallido: ${err.message || String(err)}`);
+    process.exit(1);
+  }
+}
+
+/**
+ * Ejecuta un dry-run: muestra qué cambiaría sin modificar archivos.
+ *
+ * @param {string[]} commands - Lista de componentes a previsualizar
+ * @param {boolean} allMode - Si se está ejecutando en modo 'all'
+ */
+function executeDryRun(commands, allMode) {
+  logHeader('🔍 DRY RUN — No se modificaran archivos');
+  console.log('');
+
+  const components = [];
+
+  if (commands.includes('prompts') || allMode) {
+    components.push({ name: 'Prompts (.prompts/)', dir: path.join(TEMP_DIR, '.prompts') });
+  }
+  if (commands.includes('books') || allMode) {
+    components.push({ name: 'Books (.books/)', dir: path.join(TEMP_DIR, '.books') });
+  }
+  if (commands.includes('context') || allMode) {
+    components.push({ name: 'Context (.context/)', dir: path.join(TEMP_DIR, '.context') });
+  }
+  if (commands.includes('docs') || allMode) {
+    components.push({ name: 'Documentation (docs/)', dir: path.join(TEMP_DIR, 'docs') });
+  }
+  if (commands.includes('templates') || allMode) {
+    components.push({ name: 'Templates MCP (templates/mcp/)', dir: path.join(TEMP_DIR, 'templates', 'mcp') });
+  }
+  if (commands.includes('scripts') || allMode) {
+    components.push({ name: 'Scripts (scripts/)', dir: path.join(TEMP_DIR, 'scripts') });
+  }
+  if (commands.includes('cli') || allMode) {
+    components.push({ name: 'CLI Tools (cli/)', dir: path.join(TEMP_DIR, 'cli') });
+  }
+  if (commands.includes('agents') || allMode) {
+    components.push({ name: 'Agents (.agents/)', dir: path.join(TEMP_DIR, '.agents') });
+  }
+  if (commands.includes('vscode') || allMode) {
+    components.push({ name: 'VS Code (.vscode/)', dir: path.join(TEMP_DIR, '.vscode') });
+  }
+  if (commands.includes('husky') || allMode) {
+    components.push({ name: 'Git Hooks (.husky/)', dir: path.join(TEMP_DIR, '.husky') });
+  }
+  if (commands.includes('tooling') || allMode) {
+    const toolingCount = TOOLING_FILES.filter(f => fs.existsSync(path.join(TEMP_DIR, f))).length;
+    console.log(`   ${colors.cyan}Tooling${colors.reset}  →  Sincronizaria ${toolingCount} archivo${toolingCount !== 1 ? 's' : ''} de config`);
+  }
+  if (commands.includes('examples') || allMode) {
+    const examplesCount = EXAMPLE_FILES.filter(f => fs.existsSync(path.join(TEMP_DIR, f))).length;
+    console.log(`   ${colors.cyan}Examples${colors.reset}  →  Sincronizaria ${examplesCount} archivo${examplesCount !== 1 ? 's' : ''} de ejemplo`);
+  }
+
+  let totalFiles = 0;
+  for (const comp of components) {
+    const count = countFilesInDir(comp.dir);
+    totalFiles += count;
+    if (count > 0) {
+      console.log(`   ${colors.cyan}${comp.name}${colors.reset}  →  Sincronizaria ${count} archivo${count !== 1 ? 's' : ''}`);
+    }
+    else {
+      console.log(`   ${colors.dim}${comp.name}  →  No encontrado en template${colors.reset}`);
+    }
+  }
+
+  console.log('');
+  logInfo(`Total: ${totalFiles} archivos se sincronizarian`);
+  logInfo('Ejecuta sin --dry-run para aplicar los cambios.');
+}
+
+// ============================================================================
+// CLONE TEMPLATE
+// ============================================================================
+
+/**
+ * Clona el template desde GitHub a un directorio temporal.
+ * Usa GitHub CLI (gh) para manejar autenticación automáticamente.
+ *
+ * @returns {Promise<void>}
+ * @throws {Error} Si no hay autenticación o acceso al repo
+ */
+async function cloneTemplate() {
+  logStep('Descargando ultima version del template...');
+  console.log(`${colors.dim}  Repo: ${TEMPLATE_REPO}${colors.reset}`);
+  console.log(`${colors.dim}  Destino temporal: ${TEMP_DIR}${colors.reset}`);
+
+  // Clean up any previous temp directory
+  if (fs.existsSync(TEMP_DIR)) {
+    console.log(`${colors.dim}  Limpiando directorio temporal anterior...${colors.reset}`);
+    fs.rmSync(TEMP_DIR, { recursive: true, force: true });
+  }
+
+  // First, verify gh CLI is authenticated
+  console.log(`${colors.dim}  Verificando autenticacion de GitHub CLI...${colors.reset}`);
+  try {
+    execSync('gh auth status', { stdio: 'pipe' });
+    console.log(`${colors.green}  ✓ GitHub CLI autenticado${colors.reset}`);
+  }
+  catch {
+    logError('GitHub CLI no esta autenticado');
+    console.log(`\n${colors.yellow}Ejecuta primero:${colors.reset}`);
+    console.log(`  ${colors.cyan}gh auth login${colors.reset}\n`);
+    process.exit(1);
+  }
+
+  // Clone the repository
+  console.log(
+    `${colors.dim}  Clonando repositorio (esto puede tomar unos segundos)...${colors.reset}`,
+  );
+
+  try {
+    const cloneCommand = `gh repo clone ${TEMPLATE_REPO} "${TEMP_DIR}" -- --depth 1 --quiet`;
+    execSync(cloneCommand, {
+      stdio: ['pipe', 'pipe', 'pipe'],
+      timeout: 60000, // 60 second timeout
+    });
+    console.log(`${colors.green}  ✓ Template descargado correctamente${colors.reset}`);
+  }
+  catch (error) {
+    if (error.killed) {
+      logError('Timeout: La descarga tardo demasiado (>60s)');
+      console.log(`${colors.yellow}Posibles causas:${colors.reset}`);
+      console.log('  • Conexion a internet lenta');
+      console.log('  • Problemas con GitHub');
+      console.log(`\n${colors.yellow}Intenta ejecutar manualmente:${colors.reset}`);
+      console.log(`  ${colors.cyan}gh repo clone ${TEMPLATE_REPO}${colors.reset}\n`);
+    }
+    else {
+      logError('Error al descargar el template');
+      console.log(`${colors.yellow}Posibles causas:${colors.reset}`);
+      console.log('  • No tienes acceso al repositorio privado de UPEX Galaxy');
+      console.log('  • Problemas de conexion a internet');
+      console.log('  • GitHub CLI no configurado correctamente');
+      console.log(`\n${colors.yellow}Verifica tu acceso:${colors.reset}`);
+      console.log(`  ${colors.cyan}gh repo view ${TEMPLATE_REPO}${colors.reset}\n`);
+    }
+    process.exit(1);
+  }
+}
+
+// ============================================================================
+// UPDATE FUNCTIONS
+// ============================================================================
+
+/**
+ * Update .prompts/ directory using merge strategy.
+ * - Full update (all phases + standalone): merges entire directory
+ * - Specific phases: merges only those phase directories
+ * - Standalone only: merges root files/folders that are NOT phase directories
+ *
+ * @param {number[]} phases - Phase numbers to update
+ * @param {boolean} includeStandalone - Whether to include standalone files
+ * @returns {{success: number, errors: number}} Merge result totals
+ */
+function updatePrompts(phases, includeStandalone) {
+  logStep('Actualizando .prompts/ (merge)...');
+
+  const totals = { success: 0, errors: 0 };
+
+  const templatePromptsPath = path.join(TEMP_DIR, '.prompts');
+  if (!fs.existsSync(templatePromptsPath)) {
+    logWarning('No se encontro directorio .prompts en el template');
+    return totals;
+  }
+
+  // Ensure .prompts exists
+  fs.mkdirSync('.prompts', { recursive: true });
+
+  // Check if this is a full update (all phases + standalone)
+  const allPhaseNums = Object.keys(PHASE_CONFIG).map(Number);
+  const isFullUpdate
+    = includeStandalone
+      && phases.length === allPhaseNums.length
+      && allPhaseNums.every(p => phases.includes(p));
+
+  if (isFullUpdate) {
+    // Full directory merge - syncs everything from template
+    logMerge('Sincronizando directorio completo...');
+    const result = mergeDirectory(templatePromptsPath, '.prompts');
+    totals.success += result.success;
+    totals.errors += result.errors;
+    return totals;
+  }
+
+  // Update specific phases
+  if (phases && phases.length > 0) {
+    for (const phaseNum of phases) {
+      const phaseConfig = PHASE_CONFIG[phaseNum];
+      if (!phaseConfig) { continue; }
+
+      const srcPath = path.join(templatePromptsPath, phaseConfig.dir);
+      const destPath = path.join('.prompts', phaseConfig.dir);
+
+      if (fs.existsSync(srcPath)) {
+        logMerge(`Fase ${phaseNum}: ${phaseConfig.name}`);
+        const result = mergeDirectory(srcPath, destPath, '  ');
+        totals.success += result.success;
+        totals.errors += result.errors;
+      }
+      else {
+        logWarning(`Fase ${phaseNum} no encontrada en template`);
+      }
+    }
+  }
+
+  // Update standalone (non-phase files/folders)
+  if (includeStandalone) {
+    logMerge('Archivos standalone...');
+    const phaseDirs = Object.values(PHASE_CONFIG).map(c => c.dir);
+    const items = fs.readdirSync(templatePromptsPath, { withFileTypes: true });
+
+    for (const item of items) {
+      // Skip phase directories - only sync non-phase items
+      if (phaseDirs.includes(item.name)) { continue; }
+
+      const srcPath = path.join(templatePromptsPath, item.name);
+      const destPath = path.join('.prompts', item.name);
+
+      if (item.isDirectory()) {
+        const result = mergeDirectory(srcPath, destPath, '  ');
+        totals.success += result.success;
+        totals.errors += result.errors;
+      }
+      else {
+        try {
+          fs.cpSync(srcPath, destPath);
+          totals.success++;
+          logSuccess(`  ${item.name}`);
+        }
+        catch (err) {
+          logWarning(`  Skipped ${item.name}: ${err.message || String(err)}`);
+          totals.errors++;
+        }
+      }
+    }
+  }
+
+  return totals;
+}
+
+/**
+ * Update .books/ directory using merge strategy.
+ * Books are human-readable manuals that mirror .prompts/ structure.
+ * - Full update (all phases + standalone): merges entire directory
+ * - Specific phases: merges only those phase directories
+ * - Standalone only: merges root files/folders that are NOT phase directories
+ *
+ * @param {number[]} phases - Phase numbers to update
+ * @param {boolean} includeStandalone - Whether to include standalone files
+ * @returns {{success: number, errors: number}} Merge result totals
+ */
+function updateBooks(phases, includeStandalone) {
+  logStep('Actualizando .books/ (merge)...');
+
+  const totals = { success: 0, errors: 0 };
+
+  const templateBooksPath = path.join(TEMP_DIR, '.books');
+  if (!fs.existsSync(templateBooksPath)) {
+    logWarning('No se encontro directorio .books en el template');
+    return totals;
+  }
+
+  // Ensure .books exists
+  fs.mkdirSync('.books', { recursive: true });
+
+  // Check if this is a full update (all phases + standalone)
+  const allPhaseNums = Object.keys(PHASE_CONFIG).map(Number);
+  const isFullUpdate
+    = includeStandalone
+      && phases.length === allPhaseNums.length
+      && allPhaseNums.every(p => phases.includes(p));
+
+  if (isFullUpdate) {
+    // Full directory merge - syncs everything from template
+    logMerge('Sincronizando directorio completo...');
+    const result = mergeDirectory(templateBooksPath, '.books');
+    totals.success += result.success;
+    totals.errors += result.errors;
+    return totals;
+  }
+
+  // Update specific phases
+  if (phases && phases.length > 0) {
+    for (const phaseNum of phases) {
+      const phaseConfig = PHASE_CONFIG[phaseNum];
+      if (!phaseConfig) { continue; }
+
+      const srcPath = path.join(templateBooksPath, phaseConfig.dir);
+      const destPath = path.join('.books', phaseConfig.dir);
+
+      if (fs.existsSync(srcPath)) {
+        logMerge(`Fase ${phaseNum}: ${phaseConfig.name}`);
+        const result = mergeDirectory(srcPath, destPath, '  ');
+        totals.success += result.success;
+        totals.errors += result.errors;
+      }
+      else {
+        logWarning(`Fase ${phaseNum} no encontrada en template .books/`);
+      }
+    }
+  }
+
+  // Update standalone (non-phase files/folders)
+  if (includeStandalone) {
+    logMerge('Archivos standalone...');
+    const phaseDirs = Object.values(PHASE_CONFIG).map(c => c.dir);
+    const items = fs.readdirSync(templateBooksPath, { withFileTypes: true });
+
+    for (const item of items) {
+      // Skip phase directories - only sync non-phase items
+      if (phaseDirs.includes(item.name)) { continue; }
+
+      const srcPath = path.join(templateBooksPath, item.name);
+      const destPath = path.join('.books', item.name);
+
+      if (item.isDirectory()) {
+        const result = mergeDirectory(srcPath, destPath, '  ');
+        totals.success += result.success;
+        totals.errors += result.errors;
+      }
+      else {
+        try {
+          fs.cpSync(srcPath, destPath);
+          totals.success++;
+          logSuccess(`  ${item.name}`);
+        }
+        catch (err) {
+          logWarning(`  Skipped ${item.name}: ${err.message || String(err)}`);
+          totals.errors++;
+        }
+      }
+    }
+  }
+
+  return totals;
+}
+
+/**
+ * Update docs/ directory using merge strategy.
+ * Merges entire directory - any new files/folders in template are synced.
+ *
+ * @returns {{success: number, errors: number}} Merge result totals
+ */
+function updateDocs() {
+  logStep('Actualizando docs/ (merge)...');
+
+  const docsPath = path.join(TEMP_DIR, 'docs');
+  if (!fs.existsSync(docsPath)) {
+    logWarning('No se encontro directorio docs en el template');
+    return { success: 0, errors: 0 };
+  }
+
+  logMerge('Sincronizando directorio completo...');
+  return mergeDirectory(docsPath, 'docs');
+}
+
+/**
+ * Update .context/ directory using merge strategy.
+ * Merges entire directory - any new files/folders in template are synced.
+ *
+ * @returns {{success: number, errors: number}} Merge result totals
+ */
+function updateContext() {
+  logStep('Actualizando .context/ (merge)...');
+
+  const contextPath = path.join(TEMP_DIR, '.context');
+  if (!fs.existsSync(contextPath)) {
+    logWarning('No se encontro directorio .context en el template');
+    return { success: 0, errors: 0 };
+  }
+
+  logMerge('Sincronizando directorio completo...');
+  return mergeDirectory(contextPath, '.context');
+}
+
+/**
+ * Update templates/mcp/ directory.
+ *
+ * @returns {{success: number, errors: number}} Merge result totals
+ */
+function updateTemplates() {
+  logStep('Actualizando templates/mcp/ (merge)...');
+
+  const templatesPath = path.join(TEMP_DIR, 'templates', 'mcp');
+  if (!fs.existsSync(templatesPath)) {
+    logWarning('No se encontro directorio templates/mcp en el template');
+    return { success: 0, errors: 0 };
+  }
+
+  return mergeDirectory(templatesPath, 'templates/mcp');
+}
+
+/**
+ * Update scripts/ directory using merge strategy.
+ * Merges entire directory - any new scripts in template are synced.
+ *
+ * @returns {{success: number, errors: number}} Merge result totals
+ */
+function updateScripts() {
+  logStep('Actualizando scripts/ (merge)...');
+
+  const scriptsPath = path.join(TEMP_DIR, 'scripts');
+  if (!fs.existsSync(scriptsPath)) {
+    logWarning('No se encontro directorio scripts en el template');
+    return { success: 0, errors: 0 };
+  }
+
+  logMerge('Sincronizando directorio completo...');
+  return mergeDirectory(scriptsPath, 'scripts');
+}
+
+/**
+ * Update cli/ directory using merge strategy.
+ * Merges entire directory - syncs Xray CLI and other CLI tools.
+ *
+ * @returns {{success: number, errors: number}} Merge result totals
+ */
+function updateCli() {
+  logStep('Actualizando cli/ (merge)...');
+
+  const cliPath = path.join(TEMP_DIR, 'cli');
+  if (!fs.existsSync(cliPath)) {
+    logWarning('No se encontro directorio cli en el template');
+    return { success: 0, errors: 0 };
+  }
+
+  logMerge('Sincronizando directorio completo...');
+  return mergeDirectory(cliPath, 'cli');
+}
+
+/**
+ * Update .vscode/ directory using merge strategy.
+ * Merges entire directory - syncs extensions.json, settings.json, etc.
+ *
+ * @returns {{success: number, errors: number}} Merge result totals
+ */
+function updateVscode() {
+  logStep('Actualizando .vscode/ (merge)...');
+
+  const vscodePath = path.join(TEMP_DIR, '.vscode');
+  if (!fs.existsSync(vscodePath)) {
+    logWarning('No se encontro directorio .vscode en el template');
+    return { success: 0, errors: 0 };
+  }
+
+  logMerge('Sincronizando directorio completo...');
+  return mergeDirectory(vscodePath, '.vscode');
+}
+
+/**
+ * Update .husky/ directory using merge strategy.
+ * Merges entire directory - syncs git hooks (pre-commit, etc.)
+ *
+ * @returns {{success: number, errors: number}} Merge result totals
+ */
+function updateHusky() {
+  logStep('Actualizando .husky/ (merge)...');
+
+  const huskyPath = path.join(TEMP_DIR, '.husky');
+  if (!fs.existsSync(huskyPath)) {
+    logWarning('No se encontro directorio .husky en el template');
+    return { success: 0, errors: 0 };
+  }
+
+  logMerge('Sincronizando directorio completo...');
+  return mergeDirectory(huskyPath, '.husky');
+}
+
+/**
+ * Update tooling files - universal framework configuration.
+ * Copies individual config files from the template root.
+ *
+ * @returns {{success: number, errors: number}} Merge result totals
+ */
+function updateTooling() {
+  logStep('Actualizando archivos de tooling...');
+
+  let success = 0;
+  let errors = 0;
+
+  for (const file of TOOLING_FILES) {
+    const srcPath = path.join(TEMP_DIR, file);
+    try {
+      if (fs.existsSync(srcPath)) {
+        fs.cpSync(srcPath, file);
+        logSuccess(file);
+        success++;
+      }
+      else {
+        logWarning(`${file} no encontrado en template`);
+      }
+    }
+    catch (err) {
+      logWarning(`Skipped ${file}: ${err.message || String(err)}`);
+      errors++;
+    }
+  }
+
+  return { success, errors };
+}
+
+/**
+ * Update example files - template files for user configuration.
+ * Copies individual example files from the template root.
+ *
+ * @returns {{success: number, errors: number}} Merge result totals
+ */
+function updateExamples() {
+  logStep('Actualizando archivos de ejemplo...');
+
+  let success = 0;
+  let errors = 0;
+
+  for (const file of EXAMPLE_FILES) {
+    const srcPath = path.join(TEMP_DIR, file);
+    try {
+      if (fs.existsSync(srcPath)) {
+        fs.cpSync(srcPath, file);
+        logSuccess(file);
+        success++;
+      }
+      else {
+        logWarning(`${file} no encontrado en template`);
+      }
+    }
+    catch (err) {
+      logWarning(`Skipped ${file}: ${err.message || String(err)}`);
+      errors++;
+    }
+  }
+
+  return { success, errors };
+}
+
+/**
+ * Extract CLI_VERSION from a script's source code.
+ *
+ * @param {string} content - Source code content
+ * @returns {string|null} Version string or null if not found
+ */
+function extractVersion(content) {
+  const match = content.match(/const\s+CLI_VERSION\s*=\s*['"]([^'"]+)['"]/);
+  return match ? match[1] : null;
+}
+
+/**
+ * Auto-actualiza este script antes de cualquier operación.
+ * Compara el script actual con la versión del template y lo actualiza si hay diferencias.
+ * Detects major version changes and logs version transition.
+ *
+ * @returns {boolean} true si el script fue actualizado y necesita reiniciarse
+ */
+function selfUpdate() {
+  const currentScriptPath = path.join(process.cwd(), 'cli', 'update-template.js');
+  const templateScriptPath = path.join(TEMP_DIR, 'cli', 'update-template.js');
+
+  if (!fs.existsSync(templateScriptPath)) {
+    return false;
+  }
+
+  const currentContent = fs.existsSync(currentScriptPath)
+    ? fs.readFileSync(currentScriptPath, 'utf-8')
+    : '';
+  const templateContent = fs.readFileSync(templateScriptPath, 'utf-8');
+
+  if (currentContent !== templateContent) {
+    const currentVer = extractVersion(currentContent) || 'unknown';
+    const templateVer = extractVersion(templateContent) || 'unknown';
+
+    // Detect major version change
+    const currentMajor = currentVer.split('.')[0];
+    const templateMajor = templateVer.split('.')[0];
+
+    if (currentMajor !== templateMajor && currentMajor !== 'unknown') {
+      logWarning(`Cambio de version mayor detectado: v${currentVer} → v${templateVer}`);
+      logInfo('Revisa el changelog por posibles cambios incompatibles despues de esta actualizacion.');
+    }
+
+    logStep(`Auto-actualizando update-template.js (v${currentVer} → v${templateVer})...`);
+    fs.mkdirSync('cli', { recursive: true });
+    fs.cpSync(templateScriptPath, currentScriptPath);
+    logSuccess(`update-template.js actualizado a v${templateVer}`);
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Update .agents/ directory using merge strategy.
+ * Merges entire directory - syncs all agent skills source files.
+ *
+ * @returns {{success: number, errors: number}} Merge result totals
+ */
+function updateAgents() {
+  logStep('Actualizando .agents/ (merge)...');
+
+  const agentsPath = path.join(TEMP_DIR, '.agents');
+  if (!fs.existsSync(agentsPath)) {
+    logWarning('No se encontro directorio .agents en el template');
+    return { success: 0, errors: 0 };
+  }
+
+  logMerge('Sincronizando directorio completo...');
+  return mergeDirectory(agentsPath, '.agents');
+}
+
+/**
+ * Update .claude/ directory with selective sync.
+ * - Copies settings.json (shared project settings)
+ * - Recreates skill symlinks based on .agents/skills/ contents
+ * - NEVER touches settings.local.json (personal per-user settings)
+ *
+ * @returns {{success: number, errors: number}} Merge result totals
+ */
+function updateClaude() {
+  logStep('Actualizando .claude/ (selective)...');
+
+  let success = 0;
+  let errors = 0;
+
+  // 1. Copy settings.json if exists in template
+  const settingsPath = path.join(TEMP_DIR, '.claude', 'settings.json');
+  if (fs.existsSync(settingsPath)) {
+    try {
+      fs.mkdirSync('.claude', { recursive: true });
+      fs.cpSync(settingsPath, '.claude/settings.json');
+      logSuccess('settings.json');
+      success++;
+    }
+    catch (err) {
+      logWarning(`Skipped settings.json: ${err.message || String(err)}`);
+      errors++;
+    }
+  }
+
+  // 2. Recreate skill symlinks from .agents/skills/
+  const agentsSkillsDir = path.join('.agents', 'skills');
+  if (fs.existsSync(agentsSkillsDir)) {
+    const skillsDir = path.join('.claude', 'skills');
+    fs.mkdirSync(skillsDir, { recursive: true });
+
+    const skills = fs.readdirSync(agentsSkillsDir, { withFileTypes: true });
+    for (const skill of skills) {
+      if (!skill.isDirectory()) { continue; }
+
+      const symlinkPath = path.join(skillsDir, skill.name);
+      const symlinkTarget = path.join('..', '..', '.agents', 'skills', skill.name);
+
+      // Remove existing (file, dir, or broken symlink) before creating new symlink
+      try {
+        const stat = fs.lstatSync(symlinkPath);
+        if (stat) { fs.rmSync(symlinkPath, { recursive: true, force: true }); }
+      }
+      catch {
+        // Path doesn't exist, nothing to remove
+      }
+
+      try {
+        fs.symlinkSync(symlinkTarget, symlinkPath);
+        logSuccess(`skills/${skill.name} -> ${symlinkTarget}`);
+        success++;
+      }
+      catch (err) {
+        logWarning(`Skipped symlink ${skill.name}: ${err.message || String(err)}`);
+        errors++;
+      }
+    }
+  }
+
+  logInfo('settings.local.json preservado (nunca se sincroniza)');
+  return { success, errors };
+}
+
+/**
+ * Actualiza context-engineering.md desde el README del template.
+ * Este archivo sirve como documentación maestra de la arquitectura.
+ *
+ * @returns {{success: number, errors: number}} Merge result totals
+ */
+function updateContextEngineering() {
+  const templateReadmePath = path.join(TEMP_DIR, 'README.md');
+  if (fs.existsSync(templateReadmePath)) {
+    logStep('Actualizando context-engineering.md...');
+    try {
+      fs.cpSync(templateReadmePath, 'context-engineering.md');
+      logSuccess('context-engineering.md actualizado');
+      return { success: 1, errors: 0 };
+    }
+    catch (err) {
+      logWarning(`Skipped context-engineering.md: ${err.message || String(err)}`);
+      return { success: 0, errors: 1 };
+    }
+  }
+  return { success: 0, errors: 0 };
+}
+
+/**
+ * Limpia el directorio temporal después de la actualización.
+ * Se ejecuta al final de cada operación exitosa.
+ */
+function cleanup() {
+  fs.rmSync(TEMP_DIR, { recursive: true, force: true });
+}
+
+// ============================================================================
+// VERSION TRACKING
+// ============================================================================
+
+/**
+ * Get the HEAD commit hash from the cloned template repo.
+ *
+ * @returns {string} Git commit hash or 'unknown'
+ */
+function getTemplateCommit() {
+  try {
+    return execSync('git rev-parse HEAD', { cwd: TEMP_DIR, stdio: ['pipe', 'pipe', 'pipe'] })
+      .toString()
+      .trim();
+  }
+  catch {
+    return 'unknown';
+  }
+}
+
+/**
+ * Record sync metadata to .template-version.json after successful sync.
+ *
+ * @param {string[]} syncedComponents - List of component names that were synced
+ */
+function recordSyncVersion(syncedComponents) {
+  const version = {
+    lastSync: new Date().toISOString(),
+    templateCommit: getTemplateCommit(),
+    cliVersion: CLI_VERSION,
+    syncedComponents,
+    variableSystemVersion: true,
+  };
+
+  fs.writeFileSync(VERSION_FILE, `${JSON.stringify(version, null, 2)}\n`);
+  logSuccess(`Version registrada en ${VERSION_FILE}`);
+}
+
+/**
+ * Read the current .template-version.json if it exists.
+ *
+ * @returns {object|null} Parsed version object or null
+ */
+function readSyncVersion() {
+  if (!fs.existsSync(VERSION_FILE)) { return null; }
+  try {
+    return JSON.parse(fs.readFileSync(VERSION_FILE, 'utf-8'));
+  }
+  catch {
+    return null;
+  }
+}
+
+// ============================================================================
+// VARIABLE DETECTION
+// ============================================================================
+
+/**
+ * Scan synced files for {{VARIABLE}} placeholders and check against CLAUDE.md.
+ * Warns the user about unfilled variables that need configuration.
+ */
+function detectUnfilledVariables() {
+  const claudeMdPath = path.join(process.cwd(), 'CLAUDE.md');
+  if (!fs.existsSync(claudeMdPath)) {
+    return; // No CLAUDE.md — migration notice handles this
+  }
+
+  const claudeContent = fs.readFileSync(claudeMdPath, 'utf-8');
+
+  // Check if CLAUDE.md has the Project Variables section
+  if (!claudeContent.includes('## Project Variables')) {
+    return; // Pre-variables consumer — migration notice handles this
+  }
+
+  // Extract variable definitions from the table by parsing lines
+  const definedVars = new Map(); // varName -> value
+  const varLineRegex = /`\{\{([A-Z][A-Z_]+)\}\}`/;
+
+  for (const line of claudeContent.split('\n')) {
+    const varMatch = varLineRegex.exec(line);
+    if (!varMatch) { continue; }
+
+    // Split the table row by | and grab the value column (3rd cell)
+    const cells = line.split('|').map(c => c.trim());
+    if (cells.length >= 4) {
+      definedVars.set(varMatch[1], cells[3]);
+    }
+  }
+
+  if (definedVars.size === 0) {
+    return; // Table exists but no variables found
+  }
+
+  // Scan synced directories for {{VARIABLE}} usage
+  const VARIABLE_REGEX = /\{\{([A-Z][A-Z_]+)\}\}/g;
+  const syncedDirs = ['.prompts', '.context/guidelines', 'docs'];
+  const varUsage = new Map(); // varName -> file count
+
+  for (const dir of syncedDirs) {
+    const files = collectFiles(dir);
+    for (const file of files) {
+      if (!file.endsWith('.md') && !file.endsWith('.ts') && !file.endsWith('.json')) { continue; }
+
+      try {
+        const content = fs.readFileSync(file, 'utf-8');
+        const varsInFile = new Set();
+
+        for (const varMatch of content.matchAll(VARIABLE_REGEX)) {
+          varsInFile.add(varMatch[1]);
+        }
+
+        for (const varName of varsInFile) {
+          varUsage.set(varName, (varUsage.get(varName) || 0) + 1);
+        }
+      }
+      catch {
+        // Skip unreadable files
+      }
+    }
+  }
+
+  if (varUsage.size === 0) {
+    return; // No variables found in synced files
+  }
+
+  // Determine which variables are still placeholder values
+  const PLACEHOLDER_PATTERNS = ['[', 'example', 'myproject', 'localhost', 'company.atlassian'];
+  const unfilled = [];
+  const filled = [];
+
+  for (const [varName, fileCount] of varUsage) {
+    const value = definedVars.get(varName) || '';
+    const isPlaceholder = !value
+      || PLACEHOLDER_PATTERNS.some(p => value.toLowerCase().includes(p));
+
+    if (isPlaceholder) {
+      unfilled.push({ name: varName, files: fileCount });
+    }
+    else {
+      filled.push({ name: varName, files: fileCount });
+    }
+  }
+
+  if (unfilled.length === 0) {
+    return; // All variables are configured
+  }
+
+  // Print warning
+  console.log('');
+  logWarning('Variables necesitan configuracion en CLAUDE.md:\n');
+
+  const maxNameLen = Math.max(...[...unfilled, ...filled].map(v => v.name.length + 4)); // +4 for {{ }}
+  const header = `   ${'Variable'.padEnd(maxNameLen + 2)}${'Usado en'.padEnd(12)}Estado`;
+  console.log(`${colors.dim}${header}${colors.reset}`);
+  console.log(`${colors.dim}   ${'─'.repeat(maxNameLen + 2 + 12 + 15)}${colors.reset}`);
+
+  for (const v of unfilled) {
+    const varStr = `{{${v.name}}}`.padEnd(maxNameLen + 2);
+    const filesStr = `${v.files} archivo${v.files > 1 ? 's' : ''}`.padEnd(12);
+    console.log(`   ${colors.yellow}${varStr}${colors.reset}${filesStr}${colors.yellow}⚠ Aun placeholder${colors.reset}`);
+  }
+  for (const v of filled) {
+    const varStr = `{{${v.name}}}`.padEnd(maxNameLen + 2);
+    const filesStr = `${v.files} archivo${v.files > 1 ? 's' : ''}`.padEnd(12);
+    console.log(`   ${colors.green}${varStr}${colors.reset}${filesStr}${colors.green}✓ Configurado${colors.reset}`);
+  }
+
+  console.log('');
+  logInfo('Abre CLAUDE.md y completa la tabla de Project Variables.');
+  logInfo('O ejecuta este prompt en tu asistente IA:\n');
+  console.log(`   ${colors.cyan}@.prompts/project-doc-setup.md${colors.reset}\n`);
+}
+
+// ============================================================================
+// MIGRATION DETECTION
+// ============================================================================
+
+/**
+ * Detect if consumer is upgrading from a pre-variables template.
+ * Shows a migration banner if CLAUDE.md lacks the Project Variables section.
+ */
+function checkMigrationNeeded() {
+  // If version file exists and shows variables system is known, skip
+  const syncVersion = readSyncVersion();
+  if (syncVersion && syncVersion.variableSystemVersion) {
+    return;
+  }
+
+  const claudeMdPath = path.join(process.cwd(), 'CLAUDE.md');
+
+  // No CLAUDE.md at all — likely a fresh project, not a migration
+  if (!fs.existsSync(claudeMdPath)) {
+    return;
+  }
+
+  const content = fs.readFileSync(claudeMdPath, 'utf-8');
+
+  // Already has variables section — no migration needed
+  if (content.includes('## Project Variables')) {
+    return;
+  }
+
+  // Pre-variables consumer — show migration notice
+  console.log(`
+${colors.yellow}╔══════════════════════════════════════════════════════════════╗${colors.reset}
+${colors.yellow}║${colors.reset}${colors.bold}                      UPGRADE NOTICE                        ${colors.reset}${colors.yellow}║${colors.reset}
+${colors.yellow}╠══════════════════════════════════════════════════════════════╣${colors.reset}
+${colors.yellow}║${colors.reset}                                                            ${colors.yellow}║${colors.reset}
+${colors.yellow}║${colors.reset}  Este template ahora usa ${colors.cyan}Project Variables${colors.reset}.                 ${colors.yellow}║${colors.reset}
+${colors.yellow}║${colors.reset}  Todos los prompts usan ${colors.cyan}{{VARIABLE}}${colors.reset} placeholders que       ${colors.yellow}║${colors.reset}
+${colors.yellow}║${colors.reset}  se resuelven desde tu configuracion en CLAUDE.md.           ${colors.yellow}║${colors.reset}
+${colors.yellow}║${colors.reset}                                                            ${colors.yellow}║${colors.reset}
+${colors.yellow}║${colors.reset}  ${colors.bold}DESPUES${colors.reset} de que esta actualizacion termine, ejecuta:        ${colors.yellow}║${colors.reset}
+${colors.yellow}║${colors.reset}                                                            ${colors.yellow}║${colors.reset}
+${colors.yellow}║${colors.reset}    ${colors.green}@.prompts/project-doc-setup.md${colors.reset}                          ${colors.yellow}║${colors.reset}
+${colors.yellow}║${colors.reset}                                                            ${colors.yellow}║${colors.reset}
+${colors.yellow}║${colors.reset}  Esto actualizara tu CLAUDE.md con la nueva tabla de         ${colors.yellow}║${colors.reset}
+${colors.yellow}║${colors.reset}  variables y lo configurara para tu proyecto.                ${colors.yellow}║${colors.reset}
+${colors.yellow}║${colors.reset}                                                            ${colors.yellow}║${colors.reset}
+${colors.yellow}╚══════════════════════════════════════════════════════════════╝${colors.reset}
+`);
+}
+
+// ============================================================================
+// SYNC SUMMARY
+// ============================================================================
+
+/**
+ * Print a clean summary of sync results.
+ *
+ * @param {{success: number, errors: number}} totals - Aggregated merge results
+ */
+function printSyncSummary(totals) {
+  if (totals.errors > 0) {
+    logWarning(`Sync finalizado con advertencias: ${totals.success} archivos sincronizados, ${totals.errors} omitidos`);
+    logInfo('Revisa las advertencias arriba para detalles. Tu backup esta disponible en .backups/');
+  }
+  else {
+    logSuccess(`${totals.success} archivos sincronizados exitosamente`);
+  }
+}
+
+// ============================================================================
+// MAIN
+// ============================================================================
+
+async function main() {
+  const args = process.argv.slice(2);
+
+  logHeader(`📦 UPEX Template Updater v${CLI_VERSION}`);
+  logInfo('Usando merge inteligente (preserva archivos del usuario)');
+
+  /** @type {{success: number, errors: number}} */
+  const totals = { success: 0, errors: 0 };
+  const addResult = (r) => { totals.success += r.success; totals.errors += r.errors; };
+
+  // No arguments -> Interactive menu
+  if (args.length === 0) {
+    // Check for interactive dependencies before showing menu
+    const depsReady = await ensureDependencies();
+    if (!depsReady) { return; } // Script is restarting after install
+
+    const selected = await showMainMenu();
+
+    if (selected.length === 0) {
+      logWarning('No seleccionaste nada. Saliendo...');
+      process.exit(0);
+    }
+
+    await validatePrerequisites();
+
+    // Determine which components to backup and update
+    const components = selected.includes('all')
+      ? ['prompts', 'books', 'docs', 'context', 'templates', 'scripts', 'cli', 'agents', 'claude', 'vscode', 'husky', 'tooling', 'examples']
+      : selected;
+
+    createBackup(components);
+    await cloneTemplate();
+
+    // Check for migration after cloning template
+    checkMigrationNeeded();
+
+    // Auto-actualizar el script primero (siempre)
+    selfUpdate();
+
+    if (selected.includes('all')) {
+      addResult(updatePrompts(Object.keys(PHASE_CONFIG).map(Number), true));
+      addResult(updateBooks(Object.keys(PHASE_CONFIG).map(Number), true));
+      addResult(updateDocs());
+      addResult(updateContext());
+      addResult(updateTemplates());
+      addResult(updateScripts());
+      addResult(updateCli());
+      addResult(updateAgents());
+      addResult(updateClaude());
+      addResult(updateVscode());
+      addResult(updateHusky());
+      addResult(updateTooling());
+      addResult(updateExamples());
+      addResult(updateContextEngineering());
+    }
+    else {
+      for (const cmd of selected) {
+        if (cmd === 'prompts') {
+          const promptsConfig = await showPromptsMenu();
+          addResult(updatePrompts(promptsConfig.phases, promptsConfig.standalone));
+        }
+        else if (cmd === 'books') {
+          const booksConfig = await showPromptsMenu();
+          addResult(updateBooks(booksConfig.phases, booksConfig.standalone));
+        }
+        else if (cmd === 'docs') {
+          addResult(updateDocs());
+        }
+        else if (cmd === 'context') {
+          addResult(updateContext());
+        }
+        else if (cmd === 'templates') {
+          addResult(updateTemplates());
+        }
+        else if (cmd === 'scripts') {
+          addResult(updateScripts());
+        }
+        else if (cmd === 'cli') {
+          addResult(updateCli());
+        }
+        else if (cmd === 'agents') {
+          addResult(updateAgents());
+        }
+        else if (cmd === 'claude') {
+          addResult(updateClaude());
+        }
+        else if (cmd === 'vscode') {
+          addResult(updateVscode());
+        }
+        else if (cmd === 'husky') {
+          addResult(updateHusky());
+        }
+        else if (cmd === 'tooling') {
+          addResult(updateTooling());
+        }
+        else if (cmd === 'examples') {
+          addResult(updateExamples());
+        }
+      }
+    }
+
+    recordSyncVersion(components);
+    detectUnfilledVariables();
+    cleanup();
+    logHeader('✅ Actualizacion completada!');
+    printSyncSummary(totals);
+    logInfo('Tus archivos personalizados han sido preservados.');
+    return;
+  }
+
+  // Parse arguments
+  const parsed = parseArgs(args);
+
+  if (parsed.help) {
+    showHelp();
+    process.exit(0);
+  }
+
+  // Handle rollback
+  if (parsed.rollback) {
+    rollbackFromBackup();
+    return;
+  }
+
+  if (parsed.commands.length === 0) {
+    logError('No se especifico ningun comando valido');
+    showHelp();
+    process.exit(1);
+  }
+
+  await validatePrerequisites();
+
+  // Expand 'all' command
+  if (parsed.commands.includes('all')) {
+    parsed.commands = ['prompts', 'books', 'docs', 'context', 'templates', 'scripts', 'cli', 'agents', 'claude', 'vscode', 'husky', 'tooling', 'examples'];
+    parsed.all = true;
+  }
+
+  await cloneTemplate();
+
+  // Dry-run mode: preview changes without modifying files
+  if (parsed.dryRun) {
+    executeDryRun(parsed.commands, parsed.all);
+    cleanup();
+    return;
+  }
+
+  // Check for migration after cloning template
+  checkMigrationNeeded();
+
+  createBackup(parsed.commands);
+
+  // Auto-actualizar el script primero (siempre)
+  selfUpdate();
+
+  // Execute commands
+  for (const cmd of parsed.commands) {
+    switch (cmd) {
+      case 'prompts':
+        if (parsed.all) {
+          addResult(updatePrompts(Object.keys(PHASE_CONFIG).map(Number), true));
+        }
+        else if (parsed.phases) {
+          addResult(updatePrompts(parsed.phases, parsed.standalone));
+        }
+        else if (parsed.standalone) {
+          addResult(updatePrompts([], true));
+        }
+        else {
+          // Check for interactive dependencies before showing prompts menu
+          const depsReady = await ensureDependencies();
+          if (!depsReady) { return; }
+
+          const promptsConfig = await showPromptsMenu();
+          addResult(updatePrompts(promptsConfig.phases, promptsConfig.standalone));
+        }
+        break;
+      case 'books':
+        if (parsed.all) {
+          addResult(updateBooks(Object.keys(PHASE_CONFIG).map(Number), true));
+        }
+        else if (parsed.phases) {
+          addResult(updateBooks(parsed.phases, parsed.standalone));
+        }
+        else if (parsed.standalone) {
+          addResult(updateBooks([], true));
+        }
+        else {
+          // Check for interactive dependencies before showing menu
+          const depsReady = await ensureDependencies();
+          if (!depsReady) { return; }
+
+          const booksConfig = await showPromptsMenu();
+          addResult(updateBooks(booksConfig.phases, booksConfig.standalone));
+        }
+        break;
+      case 'docs':
+        addResult(updateDocs());
+        break;
+      case 'context':
+        addResult(updateContext());
+        break;
+      case 'templates':
+        addResult(updateTemplates());
+        break;
+      case 'scripts':
+        addResult(updateScripts());
+        break;
+      case 'cli':
+        addResult(updateCli());
+        break;
+      case 'agents':
+        addResult(updateAgents());
+        break;
+      case 'claude':
+        addResult(updateClaude());
+        break;
+      case 'vscode':
+        addResult(updateVscode());
+        break;
+      case 'husky':
+        addResult(updateHusky());
+        break;
+      case 'tooling':
+        addResult(updateTooling());
+        break;
+      case 'examples':
+        addResult(updateExamples());
+        break;
+    }
+  }
+
+  // Also update context-engineering.md when updating all
+  if (parsed.commands.includes('prompts') && parsed.all) {
+    addResult(updateContextEngineering());
+  }
+
+  recordSyncVersion(parsed.commands);
+  detectUnfilledVariables();
+  cleanup();
+  logHeader('✅ Actualizacion completada!');
+  printSyncSummary(totals);
+  logInfo('Tus archivos personalizados han sido preservados.');
+}
+
+main().catch((error) => {
+  logError('Error inesperado:');
+  console.error(error);
+  process.exit(1);
+});
