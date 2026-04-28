@@ -1,0 +1,676 @@
+# API Contracts - Diploma Tracking System (OpenAPI 3.0)
+
+> Generated from: `.prompts/fase-2-architecture/srs-api-contracts.md`
+> Based on: Functional Specs + Architecture Specs
+> Status: Placeholder (APIs to be implemented in Fase 3)
+
+---
+
+## Overview
+
+Este archivo define los contratos de API del sistema. Todas las APIs siguen REST con JSON payloads.
+
+### Base URL
+
+```
+Development: http://localhost:3000/api/v1
+Production: https://api.diploma-tracking.unc.edu.ar/api/v1
+```
+
+### Autenticación
+
+Todas las requests requieren header `Authorization: Bearer <token>`
+
+### Códigos de Error Comunes
+
+| Code | Meaning |
+|------|---------|
+| 400 | Bad Request - Datos inválidos |
+| 401 | Unauthorized - Token inválido/expirado |
+| 403 | Forbidden - Sin permisos |
+| 404 | Not Found - Recurso no existe |
+| 429 | Too Many Requests - Rate limit excedido |
+| 500 | Internal Server Error |
+
+---
+
+## 1. Auth Endpoints
+
+### POST /auth/login
+
+**Descripción:** Iniciar sesión
+
+```yaml
+/auth/login:
+  post:
+    summary: Login de usuario
+    tags: [Auth]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [email, password]
+            properties:
+              email:
+                type: string
+                format: email
+              password:
+                type: string
+    responses:
+      '200':
+        description: Login exitoso
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                access_token:
+                  type: string
+                refresh_token:
+                  type: string
+                user:
+                  $ref: '#/components/schemas/User'
+      '401':
+        description: Credenciales inválidas
+```
+
+### POST /auth/refresh
+
+**Descripción:** Refrescar token
+
+```yaml
+/auth/refresh:
+  post:
+    summary: Refrescar access token
+    tags: [Auth]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [refresh_token]
+            properties:
+              refresh_token:
+                type: string
+    responses:
+      '200':
+        description: Token refrescado
+```
+
+---
+
+## 2. Students Endpoints
+
+### GET /students
+
+```yaml
+/students:
+  get:
+    summary: Listar estudiantes (admin only)
+    tags: [Students]
+    security:
+      - bearerAuth: []
+    parameters:
+      - in: query
+        name: page
+        schema:
+          type: integer
+          default: 1
+      - in: query
+        name: limit
+        schema:
+          type: integer
+          default: 20
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum: [active, inactive, at_risk, completed]
+      - in: query
+        name: search
+        schema:
+          type: string
+    responses:
+      '200':
+        description: Lista de estudiantes
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                data:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Student'
+                pagination:
+                  $ref: '#/components/schemas/Pagination'
+```
+
+### GET /students/{id}/progress
+
+```yaml
+/students/{id}/progress:
+  get:
+    summary: Obtener progreso de estudiante
+    tags: [Students]
+    security:
+      - bearerAuth: []
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+    responses:
+      '200':
+        description: Progreso del estudiante
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                student_id:
+                  type: string
+                track_id:
+                  type: string
+                courses_completed:
+                  type: integer
+                courses_total:
+                  type: integer
+                credits_accumulated:
+                  type: integer
+                credits_required:
+                  type: integer
+                progress_percentage:
+                  type: number
+                status:
+                  type: string
+                  enum: [at_risk, on_track, completed]
+                eligibility_status:
+                  $ref: '#/components/schemas/EligibilityStatus'
+```
+
+---
+
+## 3. Courses Endpoints
+
+### GET /courses
+
+```yaml
+/courses:
+  get:
+    summary: Listar cursos
+    tags: [Courses]
+    security:
+      - bearerAuth: []
+    responses:
+      '200':
+        description: Lista de cursos
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/Course'
+```
+
+### GET /courses/{id}/prerequisites
+
+```yaml
+/courses/{id}/prerequisites:
+  get:
+    summary: Obtener prerrequisitos de un curso
+    tags: [Courses]
+    security:
+      - bearerAuth: []
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+    responses:
+      '200':
+        description: Prerrequisitos del curso
+```
+
+---
+
+## 4. Certificates Endpoints
+
+### GET /certificates
+
+```yaml
+/certificates:
+  get:
+    summary: Listar certificados
+    tags: [Certificates]
+    security:
+      - bearerAuth: []
+    parameters:
+      - in: query
+        name: student_id
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+    responses:
+      '200':
+        description: Lista de certificados
+```
+
+### POST /certificates/sync
+
+```yaml
+/certificates/sync:
+  post:
+    summary: Sincronizar certificados desde Moodle
+    tags: [Certificates]
+    security:
+      - bearerAuth: []
+    responses:
+      '200':
+        description: Sync completado
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                synced:
+                  type: integer
+                errors:
+                  type: integer
+```
+
+---
+
+## 5. Enrollments Endpoints
+
+### GET /enrollments/eligibility/{studentId}
+
+```yaml
+/enrollments/eligibility/{studentId}:
+  get:
+    summary: Verificar habilitación para examen final
+    tags: [Enrollments]
+    security:
+      - bearerAuth: []
+    parameters:
+      - in: path
+        name: studentId
+        required: true
+        schema:
+          type: string
+    responses:
+      '200':
+        description: Estado de habilitación
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                student_id:
+                  type: string
+                is_eligible:
+                  type: boolean
+                eligibility_type:
+                  type: string
+                  enum: [automatic, manual, none]
+                manual_override:
+                  type: object
+                  nullable: true
+                missing_prerequisites:
+                  type: array
+                  items:
+                    type: string
+                reason:
+                  type: string
+                  nullable: true
+```
+
+### POST /enrollments
+
+```yaml
+/enrollments:
+  post:
+    summary: Inscribirse al examen final
+    tags: [Enrollments]
+    security:
+      - bearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [exam_date]
+            properties:
+              exam_date:
+                type: string
+                format: date
+              observations:
+                type: string
+    responses:
+      '201':
+        description: Inscripción exitosa
+      '400':
+        description: No habilitado
+```
+
+### PUT /enrollments/{id}/grade
+
+```yaml
+/enrollments/{id}/grade:
+  put:
+    summary: Registrar calificación (coordinador)
+    tags: [Enrollments]
+    security:
+      - bearerAuth: []
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [qualification, status]
+            properties:
+              qualification:
+                type: number
+                minimum: 0
+                maximum: 10
+              status:
+                type: string
+                enum: [approved, disapproved, absent]
+              observations:
+                type: string
+    responses:
+      '200':
+        description: Calificación registrada
+```
+
+---
+
+## 6. Rules Endpoints
+
+### GET /rules
+
+```yaml
+/rules:
+  get:
+    summary: Listar reglas de prerrequisitos
+    tags: [Rules]
+    security:
+      - bearerAuth: []
+    responses:
+      '200':
+        description: Lista de reglas
+```
+
+### POST /rules
+
+```yaml
+/rules:
+  post:
+    summary: Crear regla de prerrequisitos
+    tags: [Rules]
+    security:
+      - bearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/PrerequisiteRule'
+    responses:
+      '201':
+        description: Regla creada
+```
+
+### POST /rules/evaluate
+
+```yaml
+/rules/evaluate:
+  post:
+    summary: Evaluar prerrequisitos para un estudiante
+    tags: [Rules]
+    security:
+      - bearerAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              student_id:
+                type: string
+              target_course_id:
+                type: string
+    responses:
+      '200':
+        description: Resultado de evaluación
+```
+
+---
+
+## 7. Integrations Endpoints
+
+### GET /integrations/status
+
+```yaml
+/integrations/status:
+  get:
+    summary: Ver estado de integraciones
+    tags: [Integrations]
+    security:
+      - bearerAuth: []
+    responses:
+      '200':
+        description: Estado de integraciones
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                moodle:
+                  $ref: '#/components/schemas/IntegrationStatus'
+                guarani:
+                  $ref: '#/components/schemas/IntegrationStatus'
+```
+
+### POST /integrations/sync/moodle
+
+```yaml
+/integrations/sync/moodle:
+  post:
+    summary: Forzar sync con Moodle
+    tags: [Integrations]
+    security:
+      - bearerAuth: []
+    responses:
+      '200':
+        description: Sync iniciado
+```
+
+### POST /integrations/sync/guarani
+
+```yaml
+/integrations/sync/guarani:
+  post:
+    summary: Forzar sync con Guaraní
+    tags: [Integrations]
+    security:
+      - bearerAuth: []
+    responses:
+      '200':
+        description: Sync iniciado
+```
+
+---
+
+## 8. Admin Endpoints
+
+### GET /admin/dashboard-stats
+
+```yaml
+/admin/dashboard-stats:
+  get:
+    summary: Métricas del dashboard
+    tags: [Admin]
+    security:
+      - bearerAuth: []
+    responses:
+      '200':
+        description: Estadísticas
+```
+
+---
+
+## Components
+
+### Schemas
+
+```yaml
+components:
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+          enum: [estudiante, coordinador, admin, sysadmin]
+
+    Student:
+      type: object
+      properties:
+        id:
+          type: string
+        guarani_id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+        dni:
+          type: string
+        role:
+          type: string
+        is_active:
+          type: boolean
+
+    Course:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        code:
+          type: string
+        credits:
+          type: integer
+        is_integrator_exam:
+          type: boolean
+
+    Certificate:
+      type: object
+      properties:
+        id:
+          type: string
+        student_id:
+          type: string
+        course_id:
+          type: string
+        issue_date:
+          type: string
+          format: date
+        status:
+          type: string
+        qualification:
+          type: number
+
+    EligibilityStatus:
+      type: object
+      properties:
+        is_eligible:
+          type: boolean
+        type:
+          type: string
+        reason:
+          type: string
+
+    PrerequisiteRule:
+      type: object
+      properties:
+        id:
+          type: string
+        target_course_id:
+          type: string
+        source_course_ids:
+          type: array
+          items:
+            type: string
+        condition:
+          type: string
+          enum: [ALL, ANY]
+        is_active:
+          type: boolean
+
+    IntegrationStatus:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [ok, warning, error]
+        last_sync:
+          type: string
+          format: date-time
+        records_synced:
+          type: integer
+        errors:
+          type: integer
+
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+        pages:
+          type: integer
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+```
+
+---
+
+## Notes
+
+- **Placeholders:** Endpoints marked as placeholders to be implemented in Fase 3 (Infrastructure)
+- **Moodle/Guaraní APIs:** Real API documentation to be added when integrations are configured
+- **Generated by:** CLI script `bun run api:sync` (placeholder command)
