@@ -124,6 +124,21 @@ Nota: Usa gh (CLI de GitHub) para crear PR, hacer reviews, y todo lo relacionado
 ├── SRS/                           # Fase 2: Software Requirements
 ├── PBI/                           # Fases 4-6: Product Backlog
 │   └── epics/.../stories/...      # Stories con test cases y plans
+├── references/                     # Referencias externas (Moodle, Guaraní, etc.)
+│   └── moodle/                    # Documentación de APIs de Moodle
+│       └── page-api.md            # Moodle Page API Reference
+└── guidelines/                    # Reference material
+    ├── DEV/                       # Guidelines de desarrollo
+    ├── QA/                        # Guidelines de testing manual
+    └── TAE/                       # Guidelines de automatización
+```
+.context/                          # Documentación que la IA lee
+├── system-prompt.md               # Este archivo (copiar a CLAUDE.md o GEMINI.md o etc.)
+├── idea/                          # Fase 1: Constitution
+├── PRD/                           # Fase 2: Product Requirements
+├── SRS/                           # Fase 2: Software Requirements
+├── PBI/                           # Fases 4-6: Product Backlog
+│   └── epics/.../stories/...      # Stories con test cases y plans
 └── guidelines/                    # Reference material
     ├── DEV/                       # Guidelines de desarrollo
     ├── QA/                        # Guidelines de testing manual
