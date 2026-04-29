@@ -65,7 +65,7 @@
 │   └── services/
 │       ├── moodle.service.ts   # Placeholder
 │       └── guarani.service.ts   # Placeholder
-└── .env                 # Placeholder keys
+└── .env                 # ✅ Supabase keys configured
 ```
 
 **Client (`/client/`)**
@@ -92,13 +92,22 @@
 │       ├── CoursesPage.tsx
 │       ├── IntegrationsPage.tsx
 │       └── AdminPage.tsx
-└── .env                 # Placeholder keys
+└── .env                 # ✅ Supabase keys configured
 ```
 
 **Database (`/supabase/`)**
 ```
 └── migrations/
-    └── 001_initial_schema.sql  # Tablas completas con RLS
+    └── 001_initial_schema.sql  # ✅ Ready to run in Supabase SQL Editor
+```
+
+**MCP Configuration (`/opencode.json`)**
+```
+└── All 15 MCPs enabled:
+    - supabase ✅ (token configured)
+    - sql/dbhub ✅ (password configured)
+    - vercel, context7, shadcn, devtools, playwright ✅ (no creds needed)
+    - openapi, tavily, postman, sentry, notion, atlassian, nanobanana, slack ⏳ (placeholders)
 ```
 
 ### Tech Stack
@@ -119,19 +128,24 @@
 
 ### Inmediato (Configuración)
 
-1. **Supabase Setup**
-   - Crear proyecto en Supabase
-   - Obtener: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
-   - Ejecutar `/supabase/migrations/001_initial_schema.sql`
-   - Actualizar `/server/.env` y `/client/.env`
+1. **Supabase Setup** ✅ Keys configured
+    - ✅ Proyecto creado: `vbjhxlezqhkmhpuypkvf.supabase.co`
+    - ✅ Keys updated in `server/.env` and `client/.env`
+    - ⏳ **PENDING:** Ejecutar `/supabase/migrations/001_initial_schema.sql` en Supabase SQL Editor
+    - ✅ MCP `supabase` configurado con Access Token
+    - ✅ MCP `sql` (dbhub) configurado con password
 
-2. **Moodle Integration** (Placeholder)
-   - Configurar `MOODLE_API_URL` y `MOODLE_API_TOKEN` cuando esté disponible
-   - Implementar sync real en `/server/src/services/moodle.service.ts`
+2. **MCP Configuration** ✅ All 15 MCPs enabled in `opencode.json`
+    - ✅ supabase, sql, vercel, context7, shadcn, devtools, playwright
+    - ⏳ Pending: tavily, postman, atlassian, nanobanana, slack (need API keys)
 
-3. **Guaraní Integration** (Placeholder)
-   - Configurar `GUARANI_API_URL` y `GUARANI_API_TOKEN` cuando esté disponible
-   - Implementar sync real en `/server/src/services/guarani.service.ts`
+3. **Moodle Integration** (Placeholder)
+    - Configurar `MOODLE_API_URL` y `MOODLE_API_TOKEN` cuando esté disponible
+    - Implementar sync real en `/server/src/services/moodle.service.ts`
+
+4. **Guaraní Integration** (Placeholder)
+    - Configurar `GUARANI_API_URL` y `GUARANI_API_TOKEN` cuando esté disponible
+    - Implementar sync real en `/server/src/services/guarani.service.ts`
 
 ### Fase 4 - Specification (PBI)
 
@@ -162,7 +176,13 @@ cat .context/SRS/architecture-specs.md
 cat .context/SRS/functional-specs.md
 ```
 
-### 2. Start Development Servers
+### 2. Run Supabase Migration (FIRST TIME)
+```bash
+# Run in Supabase Dashboard → SQL Editor
+# File: /supabase/migrations/001_initial_schema.sql
+```
+
+### 3. Start Development Servers
 ```bash
 # Terminal 1 - Backend (port 3000)
 cd server && bun run dev
@@ -171,7 +191,7 @@ cd server && bun run dev
 cd client && bun run dev
 ```
 
-### 3. Typecheck Before Committing
+### 4. Typecheck Before Committing
 ```bash
 # Server
 cd server && bun run typecheck
@@ -180,9 +200,9 @@ cd server && bun run typecheck
 cd client && bun run typecheck
 ```
 
-### 4. Follow the 14-Fase Workflow
+### 5. Follow the 14-Fase Workflow
 ```
-Fase 4: Specification (PBI) - Crear stories en Jira
+Fase 4: Specification (PBI) - Crear stories en Jira (need Jira API token)
 Fase 5: Shift-Left Testing - Test plans
 Fase 6: Planning - Implementation plans
 Fase 7: Implementation - Código + unit tests
@@ -213,21 +233,38 @@ Fase 14: Shift-Right Testing
 ## Important Reminders
 
 1. **Idioma:** Todo el código en inglés, UX en español (default) con opción inglés
-2. **Supabase MCP:** Configurar para crear tablas y hacer queries
+2. **Supabase MCP:** ✅ Configurado con Access Token
 3. **Placeholders:** Moodle/Guaraní son placeholders - implementar cuando estén disponibles
 4. **No commitear:** No hacer commit de archivos `.env`
 5. **Auth real:** Implementar login con Supabase Auth cuando esté configurado
+6. **MCPs:** All 15 MCPs enabled in `opencode.json` - remaining need API keys (Jira, Tavily, Postman, etc.)
 
 ---
 
 ## Contact / Configuration Needed
 
-- [ ] Supabase project URL + keys
-- [ ] UNC account for Supabase
+- [x] Supabase project URL + keys ✅ Configured (vbjhxlezqhkmhpuypkvf.supabase.co)
+- [x] UNC account for Supabase ✅ Configured
+- [ ] **PENDING:** Run `supabase/migrations/001_initial_schema.sql` in Supabase SQL Editor
 - [ ] Moodle API credentials (when available)
 - [ ] Guaraní API credentials (when available)
+- [ ] Jira API token (for atlassian MCP + Fase 4 PBI)
+- [ ] Tavily API key (for web search MCP)
 
 ---
 
-**Last Updated:** 2026-04-27
-**Version:** 0.1.0 (MVP Setup Complete)
+## Session Log
+
+### 2026-04-29 - MCP Setup + Supabase Configuration
+- ✅ Created `opencode.json` with all 15 MCPs enabled
+- ✅ Updated `server/.env` with Supabase keys (URL: `vbjhxlezqhkmhpuypkvf.supabase.co`)
+- ✅ Updated `client/.env` with Supabase keys
+- ✅ Created `dbhub.toml` with Supabase connection (password: `entroPIA01!`)
+- ✅ Updated `opencode.json` with Supabase Access Token
+- ⏳ **PENDING:** Run `001_initial_schema.sql` in Supabase SQL Editor
+- Result: MCP infrastructure ready, Supabase configured, ready for Fase 4
+
+---
+
+**Last Updated:** 2026-04-29
+**Version:** 0.2.0 (MCPs + Supabase Configured)
