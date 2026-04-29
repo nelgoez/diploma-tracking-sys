@@ -101,13 +101,14 @@
     └── 001_initial_schema.sql  # ✅ Ready to run in Supabase SQL Editor
 ```
 
-**MCP Configuration (`/opencode.json`)**
+**MCP Configuration (`/.mcp.json`)**
 ```
-└── All 15 MCPs enabled:
-    - supabase ✅ (token configured)
-    - sql/dbhub ✅ (password configured)
+└── All 15 MCPs configured in project-specific .mcp.json:
+    - supabase ✅ (token + project URL configured)
+    - sql/dbhub ✅ (password configured in dbhub.toml)
     - vercel, context7, shadcn, devtools, playwright ✅ (no creds needed)
-    - openapi, tavily, postman, sentry, notion, atlassian, nanobanana, slack ⏳ (placeholders)
+    - openapi ✅ (staging URL configured)
+    - tavily, postman, sentry, notion, atlassian, nanobanana, slack ⏳ (placeholders - need API keys)
 ```
 
 ### Tech Stack
@@ -135,9 +136,10 @@
     - ✅ MCP `supabase` configurado con Access Token
     - ✅ MCP `sql` (dbhub) configurado con password
 
-2. **MCP Configuration** ✅ All 15 MCPs enabled in `opencode.json`
-    - ✅ supabase, sql, vercel, context7, shadcn, devtools, playwright
-    - ⏳ Pending: tavily, postman, atlassian, nanobanana, slack (need API keys)
+2. **MCP Configuration** ✅ All 15 MCPs configured in `.mcp.json`
+     - ✅ supabase (token + project URL), sql (dbhub.toml), vercel, context7, shadcn, devtools, playwright
+     - ✅ openapi (staging URL configured)
+     - ⏳ Pending: tavily, postman, sentry, notion, atlassian, nanobanana, slack (need API keys)
 
 3. **Moodle Integration** (Placeholder)
     - Configurar `MOODLE_API_URL` y `MOODLE_API_TOKEN` cuando esté disponible
@@ -237,7 +239,7 @@ Fase 14: Shift-Right Testing
 3. **Placeholders:** Moodle/Guaraní son placeholders - implementar cuando estén disponibles
 4. **No commitear:** No hacer commit de archivos `.env`
 5. **Auth real:** Implementar login con Supabase Auth cuando esté configurado
-6. **MCPs:** All 15 MCPs enabled in `opencode.json` - remaining need API keys (Jira, Tavily, Postman, etc.)
+6. **MCPs:** All 15 MCPs configured in `.mcp.json` - remaining need API keys (Jira, Tavily, Postman, etc.)
 
 ---
 
@@ -256,15 +258,16 @@ Fase 14: Shift-Right Testing
 ## Session Log
 
 ### 2026-04-29 - MCP Setup + Supabase Configuration
-- ✅ Created `opencode.json` with all 15 MCPs enabled
+- ✅ Created `.mcp.json` with all 15 MCPs configured (project-specific)
 - ✅ Updated `server/.env` with Supabase keys (URL: `vbjhxlezqhkmhpuypkvf.supabase.co`)
 - ✅ Updated `client/.env` with Supabase keys
 - ✅ Created `dbhub.toml` with Supabase connection (password: `entroPIA01!`)
-- ✅ Updated `opencode.json` with Supabase Access Token
+- ✅ Configured Supabase MCP with Access Token + Project URL in `.mcp.json`
+- ✅ Configured OpenAPI MCP with staging URL
 - ⏳ **PENDING:** Run `001_initial_schema.sql` in Supabase SQL Editor
-- Result: MCP infrastructure ready, Supabase configured, ready for Fase 4
+- Result: MCP infrastructure ready, Supabase configured, `.mcp.json` created, ready for Fase 4
 
 ---
 
 **Last Updated:** 2026-04-29
-**Version:** 0.2.0 (MCPs + Supabase Configured)
+**Version:** 0.3.0 (.mcp.json configured + Supabase ready)
