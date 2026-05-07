@@ -298,7 +298,18 @@ Fase 14: Shift-Right Testing
 - ✅ Pushed all changes to origin/main (3 commits total)
 - Result: Context recovered, MCPs audited, Supabase token needs refresh
 
+### 2026-05-07 (Later) - Secret Leak Audit & Remediation
+- 🔍 Comprehensive audit of all hardcoded secrets across the project
+- ✅ Templated `opencode.json`: replaced real Supabase keys with `${SUPABASE_ACCESS_TOKEN}`, `${SUPABASE_PROJECT_URL}`
+- ✅ Standardized all `{{VAR}}` placeholders to `${VAR}` syntax in `opencode.json`
+- ✅ Templated `.mcp.json`: replaced stale Supabase token with `${SUPABASE_ACCESS_TOKEN}`
+- ✅ Fixed `SESSION_CONTEXT.md`: removed exposed database password
+- ✅ Fixed `templates/mcp/dbhub.example.toml`: replaced real staging creds with `${SUPABASE_DB_*}` vars
+- ✅ Removed `opencode.json` from `.gitignore` (now safe to track - no secrets)
+- ✅ Committed & pushed all 4 files to `origin/main` (commit `7d61f76`)
+- Result: All secrets templated, opencode.json now git-safe
+
 ---
 
 **Last Updated:** 2026-05-07
-**Version:** 0.4.2 (All MCPs verified, Supabase token found expired)
+**Version:** 0.5.0 (Secret leak audit - all secrets templated with ${VAR})
