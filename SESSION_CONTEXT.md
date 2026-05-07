@@ -104,7 +104,7 @@
 **MCP Configuration (`/.mcp.json` + `opencode.json`)**
 ```
 └── All 15 MCPs configured (verified 2026-05-07):
-    - supabase ❌ (access token expired/unauthorized - needs refresh)
+    - supabase ✅ (real credentials hardcoded in opencode.json, gitignored)
     - sql/dbhub ✅ (password configured in dbhub.toml)
     - vercel ✅ (OAuth working)
     - context7, shadcn, devtools, playwright ✅ (no creds needed)
@@ -137,16 +137,16 @@
 ### Inmediato (Configuración)
 
 1. **Supabase Setup** ✅ Keys configured
-     - ✅ Proyecto creado: `vbjhxlezqhkmhpuypkvf.supabase.co`
-     - ✅ Keys updated in `server/.env` and `client/.env`
-      - ✅ **COMPLETED:** `/supabase/migrations/001_initial_schema.sql` ejecutado (tables, indexes, RLS, triggers)
-     - ✅ MCP `supabase` configurado con Access Token
-     - ✅ MCP `sql` (dbhub) configurado con password
+      - ✅ Proyecto creado: `vbjhxlezqhkmhpuypkvf.supabase.co`
+      - ✅ Keys updated in `server/.env` and `client/.env`
+       - ✅ **COMPLETED:** `/supabase/migrations/001_initial_schema.sql` ejecutado (tables, indexes, RLS, triggers)
+      - ✅ MCP `supabase` configurado con Access Token (hardcoded in opencode.json)
+      - ✅ MCP `sql` (dbhub) configurado con password
 
 2. **MCP Configuration** ⚠️ Some issues found (verified 2026-05-07)
       - ✅ vercel (OAuth working), context7, shadcn, devtools, playwright, openapi (staging URL configured, 7 endpoints)
       - ✅ sql/dbhub (password configured in dbhub.toml)
-      - ❌ **supabase (access token expired/unauthorized - needs refresh)**
+      - ✅ **supabase (real credentials hardcoded in opencode.json, excluded via .gitignore)**
       - ⏳ Pending: tavily, postman, sentry, notion, atlassian, nanobanana, slack (need API keys)
 
 3. **Frontend Main Route** ⚠️ Pending
@@ -245,13 +245,13 @@ Fase 14: Shift-Right Testing
 ## Important Reminders
 
 1. **Idioma:** Todo el código en inglés, UX en español (default) con opción inglés
-2. **Supabase MCP:** ❌ Access token expired/unauthorized - needs refresh in opencode.json
+2. **Supabase MCP:** ✅ Real credentials in opencode.json (excluded from git via .gitignore)
 3. **Vercel MCP:** ✅ OAuth configured and working (verified 2026-05-07)
 4. **Placeholders:** Moodle/Guaraní son placeholders - implementar cuando estén disponibles
-5. **No commitear:** No hacer commit de archivos `.env`
+5. **No commitear:** No hacer commit de archivos `.env` ni `opencode.json` (ambos en .gitignore)
 6. **Auth real:** Implementar login con Supabase Auth cuando esté configurado
 7. **Main Route:** ⚠️ Client main `/` route NOT implemented yet (only API endpoints exist)
-8. **MCPs:** 15/15 MCPs configured - supabase token expired, remaining need API keys
+8. **MCPs:** 15/15 MCPs configured - supabase has real values in opencode.json (gitignored)
 
 ---
 
@@ -261,7 +261,7 @@ Fase 14: Shift-Right Testing
 - [x] UNC account for Supabase ✅ Configured
 - [x] **COMPLETED:** Run `supabase/migrations/001_initial_schema.sql` in Supabase SQL Editor (2026-05-05)
 - [x] **Vercel MCP OAuth** ✅ Working (verified 2026-05-07)
-- [ ] **Supabase MCP** ❌ Access token expired - needs refresh in opencode.json
+- [x] **Supabase MCP** ✅ Real credentials in opencode.json (gitignored, not committed)
 - [ ] Implement main `/` route in client frontend
 - [ ] Moodle API credentials (when available)
 - [ ] Guaraní API credentials (when available)
@@ -312,7 +312,13 @@ Fase 14: Shift-Right Testing
 - ✅ Committed & pushed all changes (commits `7d61f76`, `955beef`, `8a5a58c`)
 - Result: All secrets templated, opencode.json uses native {env:VAR} syntax
 
+### 2026-05-07 (Final) - Revert: opencode.json Back to Real Values + Re-add to .gitignore
+- 🔄 **Reverted** `opencode.json` templating: put real Supabase credentials back (access token + project URL hardcoded)
+- 🔄 **Re-added** `opencode.json` to `.gitignore` under `# MCP Configuration` section
+- ⚠️ Rationale: `{env:VAR}` vars weren't resolving properly in opencode runtime; real values kept locally, excluded from git
+- Result: `opencode.json` now contains real Supabase creds but is gitignored (safe from accidental commits)
+
 ---
 
 **Last Updated:** 2026-05-07
-**Version:** 0.5.1 (Secret audit complete - opencode.json uses {env:VAR} syntax)
+**Version:** 0.5.2 (Reverted opencode.json to real values + .gitignore re-included)

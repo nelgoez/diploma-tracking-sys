@@ -64,6 +64,7 @@ Thumbs.db
 .context/mcp/outputs
 
 # ===== MCP Configuration (contain secrets - DO NOT COMMIT) =====
+opencode.json
 .mcp.json
 .mcp.catalog.json
 *.catalog.json

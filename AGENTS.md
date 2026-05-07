@@ -3,6 +3,11 @@
 ## Overview
 This guide helps agents work effectively on the Diploma Tracking System, which tracks student progress through modular diploma courses (Moodle), manages certificates, and integrates with Guaraní for academic administration. All code remains in English with Spanish/English UI options.
 
+## Session Context
+- **Always update `SESSION_CONTEXT.md`** when the user says "it all", "call it the day", "that's it", or similar wrap-up phrases.
+- Add session log entry with date, summary of work done, and current status.
+- Bump version number on each update.
+
 ## Key Commands
 - Install deps: `bun install`
 - Dev servers: `bun run dev` (backend) & `bun run dev` (frontend - adjust per setup)
