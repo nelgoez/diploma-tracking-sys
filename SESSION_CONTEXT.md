@@ -25,7 +25,7 @@
 
 ## Current Status
 
-### ✅ Completed (Phases 1-3)
+### ✅ Completed (Phases 1-3 + Partial Phase 4)
 
 #### Fase 1 - Constitution
 - `/.context/idea/business-model.md` - Business Model Canvas
@@ -101,15 +101,22 @@
     └── 001_initial_schema.sql  # ✅ Ready to run in Supabase SQL Editor
 ```
 
-**MCP Configuration (`/.mcp.json`)**
+**MCP Configuration (`/.mcp.json` + `opencode.json`)**
 ```
-└── All 15 MCPs configured in project-specific .mcp.json:
+└── All 15 MCPs configured:
     - supabase ✅ (token + project URL configured)
     - sql/dbhub ✅ (password configured in dbhub.toml)
-    - vercel, context7, shadcn, devtools, playwright ✅ (no creds needed)
+    - vercel ⚠️ (OAuth attempted 2026-05-06 - needs fix)
+    - context7, shadcn, devtools, playwright ✅ (no creds needed)
     - openapi ✅ (staging URL configured)
     - tavily, postman, sentry, notion, atlassian, nanobanana, slack ⏳ (placeholders - need API keys)
 ```
+
+#### Fase 4 - Specification (Partial)
+- ✅ Set up and verified API endpoints on backend (`/server/src/routes/`)
+- ✅ Set up and verified API endpoints on frontend (`/client/src/pages/`)
+- ⚠️ Main frontend `/` route NOT yet implemented (only API endpoint exists)
+- ✅ Vercel MCP OAuth configured and working (verified 2026-05-07)
 
 ### Tech Stack
 
@@ -130,41 +137,43 @@
 ### Inmediato (Configuración)
 
 1. **Supabase Setup** ✅ Keys configured
-    - ✅ Proyecto creado: `vbjhxlezqhkmhpuypkvf.supabase.co`
-    - ✅ Keys updated in `server/.env` and `client/.env`
-    - ⏳ **PENDING:** Ejecutar `/supabase/migrations/001_initial_schema.sql` en Supabase SQL Editor
-    - ✅ MCP `supabase` configurado con Access Token
-    - ✅ MCP `sql` (dbhub) configurado con password
+     - ✅ Proyecto creado: `vbjhxlezqhkmhpuypkvf.supabase.co`
+     - ✅ Keys updated in `server/.env` and `client/.env`
+      - ✅ **COMPLETED:** `/supabase/migrations/001_initial_schema.sql` ejecutado (tables, indexes, RLS, triggers)
+     - ✅ MCP `supabase` configurado con Access Token
+     - ✅ MCP `sql` (dbhub) configurado con password
 
-2. **MCP Configuration** ✅ All 15 MCPs configured in `.mcp.json`
-     - ✅ supabase (token + project URL), sql (dbhub.toml), vercel, context7, shadcn, devtools, playwright
-     - ✅ openapi (staging URL configured)
-     - ⏳ Pending: tavily, postman, sentry, notion, atlassian, nanobanana, slack (need API keys)
+2. **MCP Configuration** ✅ All 15 MCPs configured
+      - ✅ supabase (token + project URL), sql (dbhub.toml), vercel (OAuth working)
+      - ✅ context7, shadcn, devtools, playwright, openapi (staging URL configured)
+      - ⏳ Pending: tavily, postman, sentry, notion, atlassian, nanobanana, slack (need API keys)
 
-3. **Moodle Integration** (Placeholder)
-    - Configurar `MOODLE_API_URL` y `MOODLE_API_TOKEN` cuando esté disponible
-    - Implementar sync real en `/server/src/services/moodle.service.ts`
+3. **Frontend Main Route** ⚠️ Pending
+     - ⚠️ Main `/` route NOT implemented in client (only API endpoints exist)
+     - ✅ All other page routes set up and verified
 
-4. **Guaraní Integration** (Placeholder)
-    - Configurar `GUARANI_API_URL` y `GUARANI_API_TOKEN` cuando esté disponible
-    - Implementar sync real en `/server/src/services/guarani.service.ts`
+4. **Moodle Integration** (Placeholder)
+     - Configurar `MOODLE_API_URL` y `MOODLE_API_TOKEN` cuando esté disponible
+     - Implementar sync real en `/server/src/services/moodle.service.ts`
+
+5. **Guaraní Integration** (Placeholder)
+     - Configurar `GUARANI_API_URL` y `GUARANI_API_TOKEN` cuando esté disponible
+     - Implementar sync real en `/server/src/services/guarani.service.ts`
 
 ### Fase 4 - Specification (PBI)
-
-Siguiente paso según el workflow 14-fase:
-- Crear epics en Jira (usar MCP)
-- Generar `/.context/PBI/epic-tree.md`
-- Documentar stories con acceptance criteria
+...
+```
 
 ### Fase 7 - Implementation (Features)
 
 Prioridad según MVP scope:
-1. Auth real con Supabase Auth
-2. Dashboard de progreso funcional
-3. Motor de reglas de prerrequisitos
-4. Inscripción a examen integrador
-5. Sync Moodle (implementación real)
-6. Sync Guaraní (implementación real)
+1. Implement main `/` route in client frontend
+2. Auth real con Supabase Auth
+3. Dashboard de progreso funcional
+4. Motor de reglas de prerrequisitos
+5. Inscripción a examen integrador
+6. Sync Moodle (implementación real)
+7. Sync Guaraní (implementación real)
 
 ---
 
@@ -236,10 +245,12 @@ Fase 14: Shift-Right Testing
 
 1. **Idioma:** Todo el código en inglés, UX en español (default) con opción inglés
 2. **Supabase MCP:** ✅ Configurado con Access Token
-3. **Placeholders:** Moodle/Guaraní son placeholders - implementar cuando estén disponibles
-4. **No commitear:** No hacer commit de archivos `.env`
-5. **Auth real:** Implementar login con Supabase Auth cuando esté configurado
-6. **MCPs:** All 15 MCPs configured in `.mcp.json` - remaining need API keys (Jira, Tavily, Postman, etc.)
+3. **Vercel MCP:** ✅ OAuth configured and working (verified 2026-05-07)
+4. **Placeholders:** Moodle/Guaraní son placeholders - implementar cuando estén disponibles
+5. **No commitear:** No hacer commit de archivos `.env`
+6. **Auth real:** Implementar login con Supabase Auth cuando esté configurado
+7. **Main Route:** ⚠️ Client main `/` route NOT implemented yet (only API endpoints exist)
+8. **MCPs:** 15/15 MCPs configured - remaining need API keys
 
 ---
 
@@ -247,7 +258,9 @@ Fase 14: Shift-Right Testing
 
 - [x] Supabase project URL + keys ✅ Configured (vbjhxlezqhkmhpuypkvf.supabase.co)
 - [x] UNC account for Supabase ✅ Configured
-- [ ] **PENDING:** Run `supabase/migrations/001_initial_schema.sql` in Supabase SQL Editor
+- [x] **COMPLETED:** Run `supabase/migrations/001_initial_schema.sql` in Supabase SQL Editor (2026-05-05)
+- [x] **Vercel MCP OAuth** ✅ Working (verified 2026-05-07)
+- [ ] Implement main `/` route in client frontend
 - [ ] Moodle API credentials (when available)
 - [ ] Guaraní API credentials (when available)
 - [ ] Jira API token (for atlassian MCP + Fase 4 PBI)
@@ -267,7 +280,20 @@ Fase 14: Shift-Right Testing
 - ⏳ **PENDING:** Run `001_initial_schema.sql` in Supabase SQL Editor
 - Result: MCP infrastructure ready, Supabase configured, `.mcp.json` created, ready for Fase 4
 
+### 2026-05-06 (Yesterday) - Endpoint Setup + Vercel MCP OAuth
+- ✅ Set up and verified API endpoints on backend (`/server/src/routes/`)
+- ✅ Set up and verified API endpoints on frontend (`/client/src/pages/`, services)
+- ⚠️ Main frontend `/` route NOT yet implemented (only API endpoint)
+- ✅ Vercel MCP setup with OAuth authentication (confirmed working 2026-05-07)
+- Result: Backend/frontend endpoints checked; Vercel MCP OAuth working
+
+### 2026-05-07 (Today) - Session Recovery + Context Update
+- 🔄 Multiple opencode crashes/hangs - lost session history
+- 📝 Reconstructing session context from user report
+- ✅ Updated `SESSION_CONTEXT.md` with prior session work
+- Result: Context recovered and documented
+
 ---
 
-**Last Updated:** 2026-04-29
-**Version:** 0.3.0 (.mcp.json configured + Supabase ready)
+**Last Updated:** 2026-05-07
+**Version:** 0.4.1 (Vercel MCP OAuth confirmed working)
