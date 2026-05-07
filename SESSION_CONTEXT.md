@@ -103,12 +103,12 @@
 
 **MCP Configuration (`/.mcp.json` + `opencode.json`)**
 ```
-└── All 15 MCPs configured:
-    - supabase ✅ (token + project URL configured)
+└── All 15 MCPs configured (verified 2026-05-07):
+    - supabase ❌ (access token expired/unauthorized - needs refresh)
     - sql/dbhub ✅ (password configured in dbhub.toml)
-    - vercel ⚠️ (OAuth attempted 2026-05-06 - needs fix)
+    - vercel ✅ (OAuth working)
     - context7, shadcn, devtools, playwright ✅ (no creds needed)
-    - openapi ✅ (staging URL configured)
+    - openapi ✅ (staging URL configured, 7 endpoints available)
     - tavily, postman, sentry, notion, atlassian, nanobanana, slack ⏳ (placeholders - need API keys)
 ```
 
@@ -143,9 +143,10 @@
      - ✅ MCP `supabase` configurado con Access Token
      - ✅ MCP `sql` (dbhub) configurado con password
 
-2. **MCP Configuration** ✅ All 15 MCPs configured
-      - ✅ supabase (token + project URL), sql (dbhub.toml), vercel (OAuth working)
-      - ✅ context7, shadcn, devtools, playwright, openapi (staging URL configured)
+2. **MCP Configuration** ⚠️ Some issues found (verified 2026-05-07)
+      - ✅ vercel (OAuth working), context7, shadcn, devtools, playwright, openapi (staging URL configured, 7 endpoints)
+      - ✅ sql/dbhub (password configured in dbhub.toml)
+      - ❌ **supabase (access token expired/unauthorized - needs refresh)**
       - ⏳ Pending: tavily, postman, sentry, notion, atlassian, nanobanana, slack (need API keys)
 
 3. **Frontend Main Route** ⚠️ Pending
@@ -244,13 +245,13 @@ Fase 14: Shift-Right Testing
 ## Important Reminders
 
 1. **Idioma:** Todo el código en inglés, UX en español (default) con opción inglés
-2. **Supabase MCP:** ✅ Configurado con Access Token
+2. **Supabase MCP:** ❌ Access token expired/unauthorized - needs refresh in opencode.json
 3. **Vercel MCP:** ✅ OAuth configured and working (verified 2026-05-07)
 4. **Placeholders:** Moodle/Guaraní son placeholders - implementar cuando estén disponibles
 5. **No commitear:** No hacer commit de archivos `.env`
 6. **Auth real:** Implementar login con Supabase Auth cuando esté configurado
 7. **Main Route:** ⚠️ Client main `/` route NOT implemented yet (only API endpoints exist)
-8. **MCPs:** 15/15 MCPs configured - remaining need API keys
+8. **MCPs:** 15/15 MCPs configured - supabase token expired, remaining need API keys
 
 ---
 
@@ -260,6 +261,7 @@ Fase 14: Shift-Right Testing
 - [x] UNC account for Supabase ✅ Configured
 - [x] **COMPLETED:** Run `supabase/migrations/001_initial_schema.sql` in Supabase SQL Editor (2026-05-05)
 - [x] **Vercel MCP OAuth** ✅ Working (verified 2026-05-07)
+- [ ] **Supabase MCP** ❌ Access token expired - needs refresh in opencode.json
 - [ ] Implement main `/` route in client frontend
 - [ ] Moodle API credentials (when available)
 - [ ] Guaraní API credentials (when available)
@@ -287,13 +289,16 @@ Fase 14: Shift-Right Testing
 - ✅ Vercel MCP setup with OAuth authentication (confirmed working 2026-05-07)
 - Result: Backend/frontend endpoints checked; Vercel MCP OAuth working
 
-### 2026-05-07 (Today) - Session Recovery + Context Update
+### 2026-05-07 (Today) - Session Recovery + MCP Status Verification
 - 🔄 Multiple opencode crashes/hangs - lost session history
 - 📝 Reconstructing session context from user report
 - ✅ Updated `SESSION_CONTEXT.md` with prior session work
-- Result: Context recovered and documented
+- ✅ Verified MCP connectivity: Vercel ✅, OpenAPI ✅, Context7 ✅, Shadcn ✅
+- ❌ **Found:** Supabase MCP access token expired/unauthorized
+- ✅ Pushed all changes to origin/main (3 commits total)
+- Result: Context recovered, MCPs audited, Supabase token needs refresh
 
 ---
 
 **Last Updated:** 2026-05-07
-**Version:** 0.4.1 (Vercel MCP OAuth confirmed working)
+**Version:** 0.4.2 (All MCPs verified, Supabase token found expired)
