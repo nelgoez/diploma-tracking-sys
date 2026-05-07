@@ -306,10 +306,13 @@ Fase 14: Shift-Right Testing
 - ✅ Fixed `SESSION_CONTEXT.md`: removed exposed database password
 - ✅ Fixed `templates/mcp/dbhub.example.toml`: replaced real staging creds with `${SUPABASE_DB_*}` vars
 - ✅ Removed `opencode.json` from `.gitignore` (now safe to track - no secrets)
-- ✅ Committed & pushed all 4 files to `origin/main` (commit `7d61f76`)
-- Result: All secrets templated, opencode.json now git-safe
+- ✅ Converted `opencode.json` to proper `{env:VAR}` syntax (opencode native substitution format)
+- ✅ `{env:VAR}` used for: SUPABASE_ACCESS_TOKEN, SUPABASE_PROJECT_URL, API_BEARER_TOKEN, TAVILY_API_KEY, POSTMAN_API_KEY, JIRA_URL, JIRA_USERNAME, JIRA_API_TOKEN, GEMINI_API_KEY, SLACK_MCP_XOXP_TOKEN
+- ✅ Template/example files left untouched (follow their own conventions)
+- ✅ Committed & pushed all changes (commits `7d61f76`, `955beef`, `8a5a58c`)
+- Result: All secrets templated, opencode.json uses native {env:VAR} syntax
 
 ---
 
 **Last Updated:** 2026-05-07
-**Version:** 0.5.0 (Secret leak audit - all secrets templated with ${VAR})
+**Version:** 0.5.1 (Secret audit complete - opencode.json uses {env:VAR} syntax)
