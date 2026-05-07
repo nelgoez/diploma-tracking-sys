@@ -1,0 +1,122 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "playwright": {
+      "type": "local",
+      "command": [
+        "npx",
+        "@playwright/mcp@latest",
+        "--caps",
+        "vision,pdf,testing,tracing,tabs",
+        "--timeout-action",
+        "10000",
+        "--timeout-navigation",
+        "30000",
+        "--viewport-size",
+        "1920x1080"
+      ],
+      "enabled": true
+    },
+    "devtools": {
+      "type": "local",
+      "command": ["npx", "-y", "chrome-devtools-mcp"],
+      "enabled": true
+    },
+    "openapi": {
+      "type": "local",
+      "command": ["npx", "-y", "@ivotoby/openapi-mcp-server", "--tools", "dynamic"],
+      "environment": {
+        "API_BASE_URL": "https://staging-upexsoloq.vercel.app/api",
+        "OPENAPI_SPEC_PATH": "https://staging-upexsoloq.vercel.app/api/openapi",
+        "API_HEADERS": "Authorization:Bearer ${API_BEARER_TOKEN}"
+      },
+      "enabled": true
+    },
+    "sql": {
+      "type": "local",
+      "command": ["npx", "-y", "@bytebase/dbhub@latest", "--config", "dbhub.toml"],
+      "enabled": true
+    },
+    "supabase": {
+      "type": "local",
+      "command": ["npx", "-y", "@supabase/mcp-server-supabase@latest"],
+      "environment": {
+        "SUPABASE_ACCESS_TOKEN": "${SUPABASE_ACCESS_TOKEN}",
+        "SUPABASE_PROJECT_URL": "${SUPABASE_PROJECT_URL}"
+      },
+      "enabled": true
+    },
+    "shadcn": {
+      "type": "local",
+      "command": ["npx", "shadcn@latest", "mcp"],
+      "enabled": true
+    },
+    "context7": {
+      "type": "local",
+      "command": ["npx", "-y", "@upstash/context7-mcp"],
+      "enabled": true
+    },
+    "tavily": {
+      "type": "remote",
+      "url": "https://mcp.tavily.com/mcp",
+      "oauth": false,
+      "headers": {
+        "Authorization": "Bearer ${TAVILY_API_KEY}"
+      },
+      "enabled": true
+    },
+    "postman": {
+      "type": "remote",
+      "url": "https://mcp.postman.com/mcp",
+      "oauth": false,
+      "headers": {
+        "Authorization": "Bearer ${POSTMAN_API_KEY}"
+      },
+      "enabled": true
+    },
+    "sentry": {
+      "type": "remote",
+      "url": "https://mcp.sentry.dev/mcp/soloq/typescript",
+      "enabled": true
+    },
+    "vercel": {
+      "type": "remote",
+      "url": "https://mcp.vercel.com/",
+      "enabled": true
+    },
+    "notion": {
+      "type": "remote",
+      "url": "https://mcp.notion.com/mcp",
+      "enabled": true
+    },
+    "atlassian": {
+      "type": "local",
+      "command": ["uvx", "mcp-atlassian"],
+      "environment": {
+        "JIRA_URL": "${JIRA_URL}",
+        "JIRA_USERNAME": "${JIRA_USERNAME}",
+        "JIRA_API_TOKEN": "${JIRA_API_TOKEN}"
+      },
+      "enabled": true
+    },
+    "nanobanana": {
+      "type": "local",
+      "command": ["uvx", "nanobanana-mcp-server@latest"],
+      "environment": {
+        "GEMINI_API_KEY": "${GEMINI_API_KEY}"
+      },
+      "enabled": true
+    },
+    "slack": {
+      "type": "local",
+      "command": ["npx", "-y", "slack-mcp-server@latest", "--transport", "stdio"],
+      "environment": {
+        "SLACK_MCP_XOXP_TOKEN": "${SLACK_MCP_XOXP_TOKEN}",
+        "SLACK_MCP_ADD_MESSAGE_TOOL": "true",
+        "SLACK_MCP_USERS_CACHE": "./context/mcp/outputs/slack/",
+        "SLACK_MCP_CHANNELS_CACHE": "./context/mcp/outputs/slack/"
+      },
+      "enabled": true
+    }
+  }
+}

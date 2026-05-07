@@ -68,5 +68,4 @@ Thumbs.db
 .mcp.catalog.json
 *.catalog.json
 .mcpservers.json
-opencode.json
 dbhub.toml

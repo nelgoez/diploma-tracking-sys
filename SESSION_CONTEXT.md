@@ -276,7 +276,7 @@ Fase 14: Shift-Right Testing
 - ✅ Created `.mcp.json` with all 15 MCPs configured (project-specific)
 - ✅ Updated `server/.env` with Supabase keys (URL: `vbjhxlezqhkmhpuypkvf.supabase.co`)
 - ✅ Updated `client/.env` with Supabase keys
-- ✅ Created `dbhub.toml` with Supabase connection (password: `entroPIA01!`)
+- ✅ Created `dbhub.toml` with Supabase connection (password: `${DB_PASSWORD}`)
 - ✅ Configured Supabase MCP with Access Token + Project URL in `.mcp.json`
 - ✅ Configured OpenAPI MCP with staging URL
 - ⏳ **PENDING:** Run `001_initial_schema.sql` in Supabase SQL Editor
