@@ -1,15 +1,19 @@
 {
   "name": "diploma-tracking-server",
-  "version": "0.1.0",
   "type": "module",
+  "version": "0.1.0",
   "scripts": {
     "dev": "bun --watch src/index.ts",
     "build": "bun build src/index.ts --outdir=dist --target=bun",
     "start": "bun run dist/index.js",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "db:types": "supabase gen types typescript --local > src/db/database.types.ts",
+    "test": "bun test",
+    "test:coverage": "bun test --coverage"
   },
   "dependencies": {
     "@hono/zod-validator": "^0.7.6",
+    "@scalar/hono-api-reference": "^0.10.19",
     "@supabase/supabase-js": "^2.49.0",
     "hono": "^4.7.0",
     "jose": "^5.9.0",

@@ -1,101 +1,149 @@
-import { Hono } from "hono";
-import { supabase } from "../db/supabase";
-import { authenticate, requireRole } from "../middleware/auth";
+import { Hono } from 'hono';
+import { supabase } from '../db/supabase';
+import { authenticate, requireRole } from '../middleware/auth';
+import { guaraniService } from '../services/guarani.service';
+import { logSyncComplete, logSyncStart } from '../services/integration-logs';
+import { moodleService } from '../services/moodle.service';
 
 const integrations = new Hono();
 
-integrations.use("/*", authenticate);
+integrations.use('/*', authenticate);
 
-integrations.get("/status", requireRole("admin", "sysadmin"), async (c) => {
-  // Get last integration logs
+integrations.get('/status', requireRole('admin', 'sysadmin'), async (c) => {
+  const moodleHealth = await moodleService.healthCheck();
+  const guaraniHealth = await guaraniService.healthCheck();
+
   const { data: moodleLogs } = await supabase
-    .from("integration_logs")
-    .select("*")
-    .eq("integration_type", "moodle")
-    .order("created_at", { ascending: false })
+    .from('integration_logs')
+    .select('*')
+    .eq('integration_type', 'moodle')
+    .order('created_at', { ascending: false })
     .limit(1)
-    .single();
+    .maybeSingle();
 
   const { data: guaraniLogs } = await supabase
-    .from("integration_logs")
-    .select("*")
-    .eq("integration_type", "guarani")
-    .order("created_at", { ascending: false })
+    .from('integration_logs')
+    .select('*')
+    .eq('integration_type', 'guarani')
+    .order('created_at', { ascending: false })
     .limit(1)
-    .single();
+    .maybeSingle();
 
   return c.json({
     moodle: {
-      status: moodleLogs?.status || "unknown",
+      status: moodleHealth.status,
       last_sync: moodleLogs?.created_at || null,
-      records_synced: moodleLogs?.details?.records_synced || 0,
-      errors: moodleLogs?.status === "error" ? 1 : 0,
+      latency_ms: moodleHealth.latencyMs,
+      message: moodleHealth.message,
     },
     guarani: {
-      status: guaraniLogs?.status || "unknown",
+      status: guaraniHealth.status,
       last_sync: guaraniLogs?.created_at || null,
-      records_synced: guaraniLogs?.details?.records_synced || 0,
-      errors: guaraniLogs?.status === "error" ? 1 : 0,
+      latency_ms: guaraniHealth.latencyMs,
+      message: guaraniHealth.message,
     },
   });
 });
 
-integrations.post("/sync/moodle", requireRole("admin", "sysadmin"), async (c) => {
-  // TODO: Implement actual Moodle sync
-  // Placeholder - would call moodleService.sync()
-  
-  const logEntry = {
-    integration_type: "moodle",
-    operation: "sync",
-    status: "pending",
-  };
+integrations.post('/sync/moodle', requireRole('admin', 'sysadmin'), async (c) => {
+  const auth = c.get('auth');
+  const startedAt = Date.now();
+  await logSyncStart('moodle', auth?.userId || 'system');
 
-  await supabase.from("integration_logs").insert(logEntry);
+  try {
+    const certificates = await moodleService.syncCertificates();
+    await logSyncComplete('', 'moodle', {
+      studentsProcessed: certificates.length,
+      studentsNew: 0,
+      studentsUpdated: certificates.length,
+      errorsCount: 0,
+      durationMs: Date.now() - startedAt,
+    });
 
-  return c.json({
-    success: true,
-    message: "Moodle sync initiated (placeholder)",
-  });
+    return c.json({
+      success: true,
+      message: `Synced ${certificates.length} certificates`,
+      count: certificates.length,
+    });
+  }
+  catch (err) {
+    await logSyncComplete('', 'moodle', {
+      studentsProcessed: 0,
+      studentsNew: 0,
+      studentsUpdated: 0,
+      errorsCount: 1,
+      durationMs: Date.now() - startedAt,
+    });
+
+    return c.json({
+      success: false,
+      error: err instanceof Error ? err.message : 'Sync failed',
+    }, 500);
+  }
 });
 
-integrations.post("/sync/guarani", requireRole("admin", "sysadmin"), async (c) => {
-  // TODO: Implement actual Guaraní sync
-  // Placeholder - would call guaraniService.sync()
-  
-  const logEntry = {
-    integration_type: "guarani",
-    operation: "sync",
-    status: "pending",
-  };
+integrations.post('/sync/guarani', requireRole('admin', 'sysadmin'), async (c) => {
+  const auth = c.get('auth');
+  const startedAt = Date.now();
+  await logSyncStart('guarani', auth?.userId || 'system');
 
-  await supabase.from("integration_logs").insert(logEntry);
+  try {
+    const students = await guaraniService.syncStudents();
+    await logSyncComplete('', 'guarani', {
+      studentsProcessed: students.length,
+      studentsNew: 0,
+      studentsUpdated: students.length,
+      errorsCount: 0,
+      durationMs: Date.now() - startedAt,
+    });
 
-  return c.json({
-    success: true,
-    message: "Guaraní sync initiated (placeholder)",
-  });
+    return c.json({
+      success: true,
+      message: `Synced ${students.length} students`,
+      count: students.length,
+    });
+  }
+  catch (err) {
+    await logSyncComplete('', 'guarani', {
+      studentsProcessed: 0,
+      studentsNew: 0,
+      studentsUpdated: 0,
+      errorsCount: 1,
+      durationMs: Date.now() - startedAt,
+    });
+
+    return c.json({
+      success: false,
+      error: err instanceof Error ? err.message : 'Sync failed',
+    }, 500);
+  }
 });
 
-integrations.get("/logs", requireRole("admin", "sysadmin"), async (c) => {
-  const page = parseInt(c.req.query("page") || "1");
-  const limit = parseInt(c.req.query("limit") || "20");
+integrations.get('/logs', requireRole('admin', 'sysadmin'), async (c) => {
+  const page = Number.parseInt(c.req.query('page') || '1');
+  const limit = Number.parseInt(c.req.query('limit') || '20');
   const offset = (page - 1) * limit;
-  const integrationType = c.req.query("type");
+  const integrationType = c.req.query('type');
+  const status = c.req.query('status');
 
   let query = supabase
-    .from("integration_logs")
-    .select("*", { count: "exact" })
+    .from('integration_logs')
+    .select('*', { count: 'exact' })
     .range(offset, offset + limit - 1)
-    .order("created_at", { ascending: false });
+    .order('created_at', { ascending: false });
 
   if (integrationType) {
-    query = query.eq("integration_type", integrationType);
+    query = query.eq('integration_type', integrationType);
+  }
+
+  if (status) {
+    query = query.eq('status', status);
   }
 
   const { data, error, count } = await query;
 
   if (error) {
-    return c.json({ error: "Failed to fetch logs" }, 500);
+    return c.json({ error: 'Failed to fetch logs' }, 500);
   }
 
   return c.json({
