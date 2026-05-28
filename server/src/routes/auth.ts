@@ -70,7 +70,7 @@ auth.post('/login', zValidator('json', loginSchema), async (c) => {
     return c.json({ error: 'Invalid credentials' }, 401);
   }
 
-  const { data: student } = await supabase
+  const { data: student } = await supabaseAdmin
     .from('students')
     .select('id, name, email, role')
     .eq('email', email)
