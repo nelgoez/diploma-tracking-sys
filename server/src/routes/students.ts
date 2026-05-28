@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { supabase } from '../db/supabase';
+import { supabaseAdmin } from '../db/supabase';
 import { authenticate, requireRole } from '../middleware/auth';
 
 const students = new Hono();
@@ -13,7 +13,7 @@ students.get('/', requireRole('admin', 'sysadmin', 'coordinador'), async (c) => 
   const search = c.req.query('search') || '';
   const status = c.req.query('status');
 
-  let query = supabase
+  let query = supabaseAdmin
     .from('students')
     .select('*', { count: 'exact' })
     .range(offset, offset + limit - 1)
@@ -48,7 +48,7 @@ students.get('/', requireRole('admin', 'sysadmin', 'coordinador'), async (c) => 
 students.get('/:id', async (c) => {
   const { id } = c.req.param();
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('students')
     .select('*')
     .eq('id', id)
@@ -64,7 +64,7 @@ students.get('/:id', async (c) => {
 students.get('/:id/progress', async (c) => {
   const { id } = c.req.param();
 
-  const { data: student } = await supabase
+  const { data: student } = await supabaseAdmin
     .from('students')
     .select('*')
     .eq('id', id)
@@ -74,7 +74,7 @@ students.get('/:id/progress', async (c) => {
     return c.json({ error: 'Student not found' }, 404);
   }
 
-  const { data: enrollments } = await supabase
+  const { data: enrollments } = await supabaseAdmin
     .from('enrollments')
     .select(`
       id,
@@ -85,7 +85,7 @@ students.get('/:id/progress', async (c) => {
     `)
     .eq('student_id', id);
 
-  const { data: certificates } = await supabase
+  const { data: certificates } = await supabaseAdmin
     .from('certificates')
     .select('course_id')
     .eq('student_id', id)
@@ -142,7 +142,7 @@ students.get('/:id/progress', async (c) => {
 students.get('/:id/certificates', async (c) => {
   const { id } = c.req.param();
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('certificates')
     .select(`
       *,

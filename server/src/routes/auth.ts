@@ -141,7 +141,7 @@ auth.post('/logout', async (c) => {
 auth.get('/me', authenticate, async (c) => {
   const authUser = c.get('auth');
 
-  const { data: student } = await supabase
+  const { data: student } = await supabaseAdmin
     .from('students')
     .select('id, name, email, role, dni')
     .eq('email', authUser?.email)
