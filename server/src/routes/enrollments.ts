@@ -47,7 +47,7 @@ enrollments.get('/eligibility/:studentId', async (c) => {
     return c.json({ error: 'track_id query parameter is required' }, 400);
   }
 
-  const { data: student } = await supabase
+  const { data: student } = await supabaseAdmin
     .from('students')
     .select('*')
     .eq('id', studentId)
@@ -57,7 +57,7 @@ enrollments.get('/eligibility/:studentId', async (c) => {
     return c.json({ error: 'Student not found' }, 404);
   }
 
-  const { data: enrollment } = await supabase
+  const { data: enrollment } = await supabaseAdmin
     .from('enrollments')
     .select('*')
     .eq('student_id', studentId)

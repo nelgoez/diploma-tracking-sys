@@ -64,30 +64,26 @@ admin.post('/users', zValidator('json', createUserSchema), async (c) => {
 
 admin.get('/dashboard-stats', async (c) => {
   // Total students
-  const { count: totalStudents } = await supabase
+  const { count: totalStudents } = await supabaseAdmin
     .from('students')
     .select('*', { count: 'exact', head: true });
 
-  // Active students (accessed in last 30 days - placeholder)
-  const { count: activeStudents } = await supabase
+  const { count: activeStudents } = await supabaseAdmin
     .from('students')
     .select('*', { count: 'exact', head: true })
     .eq('is_active', true);
 
-  // Completed diplomas
-  const { count: completedCount } = await supabase
+  const { count: completedCount } = await supabaseAdmin
     .from('enrollments')
     .select('*', { count: 'exact', head: true })
     .eq('status', 'completed');
 
-  // Pending enrollments
-  const { count: pendingEnrollments } = await supabase
+  const { count: pendingEnrollments } = await supabaseAdmin
     .from('enrollments')
     .select('*', { count: 'exact', head: true })
     .eq('status', 'pending');
 
-  // Certificates issued
-  const { count: certificatesIssued } = await supabase
+  const { count: certificatesIssued } = await supabaseAdmin
     .from('certificates')
     .select('*', { count: 'exact', head: true })
     .eq('status', 'approved');
