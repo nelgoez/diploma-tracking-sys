@@ -62,6 +62,7 @@ enrollments.get('/eligibility/:studentId', async (c) => {
     .select('*')
     .eq('student_id', studentId)
     .eq('track_id', trackId)
+    .limit(1)
     .maybeSingle();
 
   if (!enrollment) {
