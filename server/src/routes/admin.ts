@@ -63,39 +63,45 @@ admin.post('/users', zValidator('json', createUserSchema), async (c) => {
 });
 
 admin.get('/dashboard-stats', async (c) => {
-  // Total students
-  const { count: totalStudents } = await supabaseAdmin
-    .from('students')
-    .select('*', { count: 'exact', head: true });
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
-  const { count: activeStudents } = await supabaseAdmin
-    .from('students')
-    .select('*', { count: 'exact', head: true })
-    .eq('is_active', true);
+  const [
+    { count: totalStudents },
+    { count: activeStudents },
+    { count: activeTracks },
+    { count: totalCertificates },
+    { data: eligibleData },
+    { count: totalEnrollments },
+    { count: completedCount },
+    { count: pendingEnrollments },
+    { count: recentSyncErrors },
+  ] = await Promise.all([
+    supabaseAdmin.from('students').select('*', { count: 'exact', head: true }),
+    supabaseAdmin.from('students').select('*', { count: 'exact', head: true }).eq('is_active', true),
+    supabaseAdmin.from('tracks').select('*', { count: 'exact', head: true }).eq('is_active', true),
+    supabaseAdmin.from('certificates').select('*', { count: 'exact', head: true }),
+    supabaseAdmin.from('certificates').select('student_id').eq('status', 'approved'),
+    supabaseAdmin.from('enrollments').select('*', { count: 'exact', head: true }),
+    supabaseAdmin.from('enrollments').select('*', { count: 'exact', head: true }).eq('status', 'completed'),
+    supabaseAdmin.from('enrollments').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
+    supabaseAdmin.from('integration_logs').select('*', { count: 'exact', head: true }).eq('status', 'error').gt('created_at', sevenDaysAgo),
+  ]);
 
-  const { count: completedCount } = await supabaseAdmin
-    .from('enrollments')
-    .select('*', { count: 'exact', head: true })
-    .eq('status', 'completed');
-
-  const { count: pendingEnrollments } = await supabaseAdmin
-    .from('enrollments')
-    .select('*', { count: 'exact', head: true })
-    .eq('status', 'pending');
-
-  const { count: certificatesIssued } = await supabaseAdmin
-    .from('certificates')
-    .select('*', { count: 'exact', head: true })
-    .eq('status', 'approved');
+  const eligibleCount = new Set((eligibleData || []).map((s: { student_id: string }) => s.student_id)).size;
+  const completionRate = totalEnrollments
+    ? Math.round(((completedCount || 0) / totalEnrollments) * 1000) / 10
+    : 0;
 
   return c.json({
     total_students: totalStudents || 0,
     active_students: activeStudents || 0,
-    completion_rate: totalStudents ? Math.round((completedCount || 0) / totalStudents * 100) : 0,
-    avg_progress: 0, // TODO: Calculate actual average
-    at_risk_students: 0, // TODO: Calculate based on last access
+    active_tracks: activeTracks || 0,
+    total_certificates: totalCertificates || 0,
+    eligible_count: eligibleCount,
+    not_eligible_count: (activeStudents || 0) - eligibleCount,
+    recent_sync_errors: recentSyncErrors || 0,
+    completion_rate: completionRate,
     pending_enrollments: pendingEnrollments || 0,
-    certificates_issued: certificatesIssued || 0,
   });
 });
 

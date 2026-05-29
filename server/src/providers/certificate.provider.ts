@@ -10,7 +10,7 @@ export interface Certificate {
 }
 
 export interface ProviderHealth {
-  status: 'connected' | 'disconnected' | 'error' | 'unknown'
+  status: 'connected' | 'disconnected' | 'error' | 'unknown' | 'degraded'
   latencyMs: number
   message?: string
   lastChecked: string

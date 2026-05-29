@@ -15,6 +15,7 @@ import { integrationsRoutes } from './routes/integrations';
 import { overridesRoutes } from './routes/overrides';
 import { rulesRoutes } from './routes/rules';
 import { studentsRoutes } from './routes/students';
+import { tracksRoutes } from './routes/tracks';
 import { guaraniService } from './services/guarani.service';
 import { moodleService } from './services/moodle.service';
 
@@ -69,6 +70,7 @@ app.get('/api-spec', async (c) => {
 
 app.route('/api/v1/auth', authRoutes);
 app.route('/api/v1/students', studentsRoutes);
+app.route('/api/v1/tracks', tracksRoutes);
 app.route('/api/v1/courses', coursesRoutes);
 app.route('/api/v1/certificates', certificatesRoutes);
 app.route('/api/v1/enrollments', enrollmentsRoutes);

@@ -121,9 +121,11 @@ export interface Database {
       enrollments: {
         Row: {
           completion_date: string | null
-          course_id: string
+          course_id: string | null
           created_at: string
           enrollment_date: string | null
+          exam_date: string | null
+          exam_status: string | null
           id: string
           observations: string | null
           qualification: number | null
@@ -134,9 +136,11 @@ export interface Database {
         }
         Insert: {
           completion_date?: string | null
-          course_id: string
+          course_id?: string | null
           created_at?: string
           enrollment_date?: string | null
+          exam_date?: string | null
+          exam_status?: string | null
           id?: string
           observations?: string | null
           qualification?: number | null
@@ -150,6 +154,8 @@ export interface Database {
           course_id?: string
           created_at?: string
           enrollment_date?: string | null
+          exam_date?: string | null
+          exam_status?: string | null
           id?: string
           observations?: string | null
           qualification?: number | null

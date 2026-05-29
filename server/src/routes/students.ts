@@ -1,8 +1,9 @@
+import type { HonoVariables } from '../types/hono';
 import { Hono } from 'hono';
 import { supabaseAdmin } from '../db/supabase';
 import { authenticate, requireRole } from '../middleware/auth';
 
-const students = new Hono();
+const students = new Hono<{ Variables: HonoVariables }>();
 
 students.use('/*', authenticate);
 
@@ -46,7 +47,19 @@ students.get('/', requireRole('admin', 'sysadmin', 'coordinador'), async (c) => 
 });
 
 students.get('/:id', async (c) => {
+  const auth = c.get('auth');
   const { id } = c.req.param();
+
+  if (auth.role === 'estudiante') {
+    const { data: ownStudent } = await supabaseAdmin
+      .from('students')
+      .select('id')
+      .eq('email', auth.email)
+      .single();
+    if (!ownStudent || ownStudent.id !== id) {
+      return c.json({ error: 'Forbidden' }, 403);
+    }
+  }
 
   const { data, error } = await supabaseAdmin
     .from('students')
@@ -62,7 +75,19 @@ students.get('/:id', async (c) => {
 });
 
 students.get('/:id/progress', async (c) => {
+  const auth = c.get('auth');
   const { id } = c.req.param();
+
+  if (auth.role === 'estudiante') {
+    const { data: ownStudent } = await supabaseAdmin
+      .from('students')
+      .select('id')
+      .eq('email', auth.email)
+      .single();
+    if (!ownStudent || ownStudent.id !== id) {
+      return c.json({ error: 'Forbidden' }, 403);
+    }
+  }
 
   const { data: student } = await supabaseAdmin
     .from('students')
@@ -140,7 +165,19 @@ students.get('/:id/progress', async (c) => {
 });
 
 students.get('/:id/certificates', async (c) => {
+  const auth = c.get('auth');
   const { id } = c.req.param();
+
+  if (auth.role === 'estudiante') {
+    const { data: ownStudent } = await supabaseAdmin
+      .from('students')
+      .select('id')
+      .eq('email', auth.email)
+      .single();
+    if (!ownStudent || ownStudent.id !== id) {
+      return c.json({ error: 'Forbidden' }, 403);
+    }
+  }
 
   const { data, error } = await supabaseAdmin
     .from('certificates')
