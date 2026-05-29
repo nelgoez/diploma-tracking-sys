@@ -139,15 +139,16 @@ class MoodleServiceImpl implements MoodleService, CertificateProvider {
       moodleUser = await findMoodleUserByEmail(student.email);
     }
     catch (err) {
-      console.error(
-        `[MoodleService] Failed to find Moodle user for ${student.email}:`,
-        (err as Error).message,
+      console.warn(
+        `[MoodleService] Failed to find Moodle user for ${student.email}: ${(err as Error).message}. Token may be student-scoped — admin token needed for multi-user sync.`,
       );
-      throw err;
+      return [];
     }
 
     if (!moodleUser) {
-      console.warn(`[MoodleService] No Moodle account for ${student.email}`);
+      console.warn(
+        `[MoodleService] No Moodle account for ${student.email}. Token scope may restrict cross-user lookup.`,
+      );
       return [];
     }
 
