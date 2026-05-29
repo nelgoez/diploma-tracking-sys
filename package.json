@@ -21,7 +21,14 @@
     "prepare": "husky"
   },
   "dependencies": {
-    "@inquirer/prompts": "^8.1.0"
+    "@hono/zod-validator": "^0.7.6",
+    "@inquirer/prompts": "^8.1.0",
+    "@scalar/hono-api-reference": "^0.10.19",
+    "@supabase/supabase-js": "^2.49.0",
+    "hono": "^4.7.0",
+    "jose": "^5.9.0",
+    "pino": "^9.6.0",
+    "zod": "^3.24.0"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^4.16.0",
