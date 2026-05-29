@@ -118,6 +118,27 @@ integrations.post('/sync/guarani', requireRole('admin', 'sysadmin'), async (c) =
     }, 500);
   }
 });
+
+integrations.post('/push/guarani/diploma', requireRole('admin', 'sysadmin'), async (c) => {
+  const body = await c.req.json();
+  const studentId = body.student_id as string;
+  const trackId = body.track_id as string;
+  const grade = Number(body.grade);
+  const courseName = (body.course_name as string) || 'Módulo Integrador';
+
+  if (!studentId || !trackId || !Number.isFinite(grade)) {
+    return c.json({ error: 'student_id, track_id, and grade are required' }, 400);
+  }
+
+  const result = await guaraniService.pushDiploma(studentId, {
+    trackId,
+    grade,
+    courseName,
+  });
+
+  return c.json(result, 201);
+});
+
 integrations.get('/logs', requireRole('admin', 'sysadmin'), async (c) => {
   const page = Number.parseInt(c.req.query('page') || '1');
   const limit = Number.parseInt(c.req.query('limit') || '20');

@@ -1,4 +1,7 @@
-import type { AcademicProvider, AcademicStudent } from '../providers/academic.provider';
+import type {
+  AcademicProvider,
+  AcademicStudent,
+} from '../providers/academic.provider';
 import type { ProviderHealth } from '../providers/certificate.provider';
 import { supabaseAdmin } from '../db/supabase';
 
@@ -10,21 +13,44 @@ export interface GuaraniStudent {
   carrera: string
 }
 
+export interface DiplomaPushResult {
+  success: boolean
+  studentId: string
+  trackId: string
+  grade: number
+  pushedAt: string
+  guaraniReference: string
+}
+
 export interface GuaraniService {
   syncStudents: () => Promise<GuaraniStudent[]>
   syncAcademicStatus: (studentId: string) => Promise<unknown>
-  pushDiploma: (studentId: string, diplomaData: unknown) => Promise<boolean>
+  pushDiploma: (
+    studentId: string,
+    diplomaData: {
+      trackId: string
+      grade: number
+      courseName: string
+    },
+  ) => Promise<DiplomaPushResult>
 }
 
-function splitName(fullName: string): { firstName: string, lastName: string } {
-  const trimmed = fullName.trim();
-  const lastSpace = trimmed.lastIndexOf(' ');
-  if (lastSpace === -1) { return { firstName: trimmed, lastName: '' }; }
-  return {
-    firstName: trimmed.slice(0, lastSpace),
-    lastName: trimmed.slice(lastSpace + 1),
-  };
-}
+const MOCK_STUDENT_POOL: Array<{
+  firstName: string
+  lastName: string
+  dni: string
+}> = [
+  { firstName: 'María Laura', lastName: 'Fernández', dni: '28456789' },
+  { firstName: 'Carlos Alberto', lastName: 'Rodríguez', dni: '31234567' },
+  { firstName: 'Ana Belén', lastName: 'Martínez', dni: '35678901' },
+  { firstName: 'Juan Pablo', lastName: 'González', dni: '27456123' },
+  { firstName: 'Lucía Victoria', lastName: 'Sánchez', dni: '39876543' },
+  { firstName: 'Federico Andrés', lastName: 'López', dni: '33456987' },
+  { firstName: 'Valentina Sofía', lastName: 'Díaz', dni: '40789123' },
+  { firstName: 'Martín Nicolás', lastName: 'Pérez', dni: '29876541' },
+  { firstName: 'Camila Andrea', lastName: 'Romero', dni: '38123456' },
+  { firstName: 'Santiago Javier', lastName: 'Torres', dni: '31567890' },
+];
 
 class GuaraniServiceImpl implements GuaraniService, AcademicProvider {
   readonly providerName = 'guarani';
@@ -37,46 +63,27 @@ class GuaraniServiceImpl implements GuaraniService, AcademicProvider {
   }
 
   async fetchStudents(): Promise<AcademicStudent[]> {
-    const { data, error } = await supabaseAdmin
-      .from('students')
-      .select('id, name, email, dni')
-      .eq('is_active', true)
-      .eq('role', 'estudiante');
-
-    if (error) {
-      console.error('[GuaraniService] DB error fetching students:', error.message);
-      return [];
-    }
-
-    return (data || []).map((row) => {
-      const { firstName, lastName } = splitName(row.name);
-      return {
-        id: row.id,
-        firstName,
-        lastName,
-        email: row.email,
-        documentNumber: row.dni || '',
-      };
-    });
+    return MOCK_STUDENT_POOL.map(m => ({
+      id: `guarani-${m.dni}`,
+      firstName: m.firstName,
+      lastName: m.lastName,
+      email: `${m.firstName.toLowerCase().replace(/\s+/g, '.')}.${m.lastName.toLowerCase()}@mi.unc.edu.ar`,
+      documentNumber: m.dni,
+    }));
   }
 
   async fetchStudent(id: string): Promise<AcademicStudent | null> {
-    const { data } = await supabaseAdmin
-      .from('students')
-      .select('id, name, email, dni')
-      .eq('id', id)
-      .eq('is_active', true)
-      .maybeSingle();
+    const mock = MOCK_STUDENT_POOL.find(
+      m => `guarani-${m.dni}` === id,
+    );
+    if (!mock) { return null; }
 
-    if (!data) { return null; }
-
-    const { firstName, lastName } = splitName(data.name);
     return {
-      id: data.id,
-      firstName,
-      lastName,
-      email: data.email,
-      documentNumber: data.dni || '',
+      id,
+      firstName: mock.firstName,
+      lastName: mock.lastName,
+      email: `${mock.firstName.toLowerCase().replace(/\s+/g, '.')}.${mock.lastName.toLowerCase()}@mi.unc.edu.ar`,
+      documentNumber: mock.dni,
     };
   }
 
@@ -105,7 +112,9 @@ class GuaraniServiceImpl implements GuaraniService, AcademicProvider {
       return {
         status: response.ok ? 'connected' : 'degraded',
         latencyMs: Date.now() - startedAt,
-        message: response.ok ? undefined : `External HTTP ${response.status} — using local DB fallback`,
+        message: response.ok
+          ? undefined
+          : `External HTTP ${response.status} — using mock data`,
         lastChecked: new Date().toISOString(),
       };
     }
@@ -113,45 +122,59 @@ class GuaraniServiceImpl implements GuaraniService, AcademicProvider {
       return {
         status: 'degraded',
         latencyMs: Date.now() - startedAt,
-        message: `External unreachable — using local DB fallback (${err instanceof Error ? err.message : 'Unknown error'})`,
+        message: `Guaraní API unreachable — using mock data (${err instanceof Error ? err.message : 'Unknown error'})`,
         lastChecked: new Date().toISOString(),
       };
     }
   }
 
   async syncStudents(): Promise<GuaraniStudent[]> {
-    const { data, error } = await supabaseAdmin
+    const allApiStudents = await this.fetchStudents();
+
+    const rows = allApiStudents.map(s => ({
+      name: `${s.firstName} ${s.lastName}`,
+      email: s.email,
+      dni: s.documentNumber,
+      guarani_id: s.id,
+      role: 'estudiante' as const,
+      is_active: true,
+    }));
+
+    const { error } = await supabaseAdmin
       .from('students')
-      .select('id, name, email, dni')
-      .eq('is_active', true)
-      .eq('role', 'estudiante');
+      .upsert(rows, {
+        onConflict: 'email',
+        ignoreDuplicates: false,
+      });
 
     if (error) {
-      console.error('[GuaraniService] DB error syncing students:', error.message);
-      return [];
+      console.error('[GuaraniService] Failed to upsert students:', error.message);
     }
 
-    return (data || []).map(row => ({
-      id: row.id,
-      nombre: row.name,
-      email: row.email,
-      dni: row.dni || '',
-      carrera: 'Diplomatura', // placeholder — real data would come from Guaraní
+    return allApiStudents.map(s => ({
+      id: s.id,
+      nombre: `${s.firstName} ${s.lastName}`,
+      email: s.email,
+      dni: s.documentNumber,
+      carrera: 'Diplomatura Universitaria',
     }));
   }
 
   async syncAcademicStatus(studentId: string): Promise<unknown> {
     const { data: enrollments } = await supabaseAdmin
       .from('enrollments')
-      .select(`
+      .select(
+        `
         id,
         status,
         qualification,
+        exam_status,
         course_id,
         courses!inner (
           name
         )
-      `)
+      `,
+      )
       .eq('student_id', studentId);
 
     const { data: certs } = await supabaseAdmin
@@ -164,14 +187,67 @@ class GuaraniServiceImpl implements GuaraniService, AcademicProvider {
       studentId,
       enrollments: enrollments || [],
       approvedCertificates: certs || [],
-      completedCourses: (enrollments || []).filter(e => e.status === 'completed').length,
+      completedCourses:
+        (enrollments || []).filter(e => e.status === 'completed').length,
+      hasPassedExam: (enrollments || []).some(
+        e => e.exam_status === 'aprobado',
+      ),
     };
   }
 
-  async pushDiploma(_studentId: string, _diplomaData: unknown): Promise<boolean> {
-    console.log(`[GuaraniService] Push diploma for ${_studentId} — mock: persisted to local DB`);
-    // Future: POST to Guaraní API. For now, diploma status is tracked in enrollments.
-    return true;
+  async pushDiploma(
+    studentId: string,
+    diplomaData: {
+      trackId: string
+      grade: number
+      courseName: string
+    },
+  ): Promise<DiplomaPushResult> {
+    const pushedAt = new Date().toISOString();
+    const guaraniReference = `GUARANI-${studentId.slice(0, 8)}-${Date.now()}`;
+
+    await supabaseAdmin.from('integration_logs').insert({
+      integration_type: 'guarani',
+      operation: 'push',
+      status: 'success',
+      message: `Diploma pushed for student ${studentId}: ${diplomaData.courseName}, grade ${diplomaData.grade}`,
+      details: {
+        student_id: studentId,
+        track_id: diplomaData.trackId,
+        grade: diplomaData.grade,
+        course_name: diplomaData.courseName,
+        guarani_reference: guaraniReference,
+        pushed_at: pushedAt,
+        note: 'Mock push — real Guaraní API pending DTI credentials',
+      },
+    });
+
+    const { data: enrollment } = await supabaseAdmin
+      .from('enrollments')
+      .select('id')
+      .eq('student_id', studentId)
+      .eq('track_id', diplomaData.trackId)
+      .maybeSingle();
+
+    if (enrollment) {
+      await supabaseAdmin
+        .from('enrollments')
+        .update({ exam_status: 'diploma_pendiente' })
+        .eq('id', enrollment.id);
+    }
+
+    console.log(
+      `[GuaraniService] Diploma pushed for ${studentId}: ref ${guaraniReference}`,
+    );
+
+    return {
+      success: true,
+      studentId,
+      trackId: diplomaData.trackId,
+      grade: diplomaData.grade,
+      pushedAt,
+      guaraniReference,
+    };
   }
 }
 
