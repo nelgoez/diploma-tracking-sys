@@ -1,0 +1,6 @@
+{
+  "version": 2,
+  "buildCommand": "cd server && bun install",
+  "outputDirectory": "server",
+  "rewrites": [{ "source": "/(.*)", "destination": "/api/index" }]
+}
