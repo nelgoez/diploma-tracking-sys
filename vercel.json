@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "buildCommand": "cd server && bun install && cd .. && bun install",
-  "installCommand": "bun install && cd server && bun install",
+  "bunVersion": "1.x",
+  "installCommand": "cd server && bun install && cd .. && bun install",
   "rewrites": [{ "source": "/(.*)", "destination": "/api/index" }]
 }
