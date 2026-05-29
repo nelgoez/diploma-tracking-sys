@@ -104,14 +104,54 @@ async function getMoodleUserCourses(userId: number): Promise<MoodleCourse[]> {
 async function getCourseCompletionStatus(
   userId: number,
   courseId: number,
-): Promise<{ completed: boolean, timecompleted: number | null }> {
+): Promise<{ completed: boolean, timecompleted: number | null, criteriaSet: boolean }> {
+  try {
+    const data = await moodleFetch<{
+      completionstatus: { completed: boolean, timecompleted: number | null }
+    }>(
+      'core_completion_get_course_completion_status',
+      { userid: String(userId), courseid: String(courseId) },
+    );
+    return {
+      completed: data.completionstatus?.completed ?? false,
+      timecompleted: data.completionstatus?.timecompleted ?? null,
+      criteriaSet: true,
+    };
+  }
+  catch (err) {
+    const msg = (err as Error).message;
+    if (msg.includes('nocriteriaset')) {
+      return { completed: false, timecompleted: null, criteriaSet: false };
+    }
+    throw err;
+  }
+}
+
+async function getActivityCompletionForCourse(
+  userId: number,
+  courseId: number,
+): Promise<{ totalActivities: number, completedActivities: number, isComplete: boolean }> {
   const data = await moodleFetch<{
-    completionstatus: { completed: boolean, timecompleted: number | null }
+    statuses: Array<{
+      cmid: number
+      state: number
+      tracking: number
+      hascompletion: boolean
+      isoverallcomplete: boolean
+    }>
   }>(
-    'core_completion_get_course_completion_status',
+    'core_completion_get_activities_completion_status',
     { userid: String(userId), courseid: String(courseId) },
   );
-  return data.completionstatus ?? { completed: false, timecompleted: null };
+
+  const tracked = (data.statuses || []).filter(s => s.hascompletion);
+  const completed = tracked.filter(s => s.state === 1);
+
+  return {
+    totalActivities: tracked.length,
+    completedActivities: completed.length,
+    isComplete: tracked.length > 0 && completed.length === tracked.length,
+  };
 }
 
 class MoodleServiceImpl implements MoodleService, CertificateProvider {
@@ -169,7 +209,19 @@ class MoodleServiceImpl implements MoodleService, CertificateProvider {
     for (const course of courses) {
       try {
         const completion = await getCourseCompletionStatus(moodleUser.id, course.id);
-        if (completion.completed) {
+        let isComplete = completion.completed;
+
+        if (!completion.criteriaSet && !isComplete) {
+          const activities = await getActivityCompletionForCourse(moodleUser.id, course.id);
+          isComplete = activities.isComplete;
+          if (isComplete) {
+            console.log(
+              `[MoodleService] Course ${course.id} has no completion criteria but all ${activities.totalActivities} activities are done — inferring completion`,
+            );
+          }
+        }
+
+        if (isComplete) {
           const completedAt = completion.timecompleted
             ? new Date(completion.timecompleted * 1000).toISOString().split('T')[0]
             : new Date().toISOString().split('T')[0];
