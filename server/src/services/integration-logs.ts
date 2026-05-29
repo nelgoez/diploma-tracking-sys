@@ -33,17 +33,30 @@ export async function logSyncComplete(
     durationMs: number
   },
 ): Promise<void> {
+  const payload = {
+    status: (stats.errorsCount > 0 ? 'error' : 'success') as SyncStatus,
+    message: `Processed ${stats.studentsProcessed} students, ${stats.errorsCount} errors`,
+    details: {
+      ...stats,
+      completed_at: new Date().toISOString(),
+    },
+  };
+
+  if (logId) {
+    const { error: updateErr } = await supabase
+      .from('integration_logs')
+      .update(payload)
+      .eq('id', logId);
+
+    if (!updateErr) { return; }
+  }
+
   await supabase
     .from('integration_logs')
     .insert({
       integration_type: provider,
       operation: 'sync',
-      status: stats.errorsCount > 0 ? 'error' : 'success',
-      message: `Processed ${stats.studentsProcessed} students, ${stats.errorsCount} errors`,
-      details: {
-        ...stats,
-        completed_at: new Date().toISOString(),
-      },
+      ...payload,
     });
 }
 
