@@ -15,6 +15,7 @@ import { integrationsRoutes } from './routes/integrations';
 import { overridesRoutes } from './routes/overrides';
 import { rulesRoutes } from './routes/rules';
 import { studentsRoutes } from './routes/students';
+import { systemRoutes } from './routes/system';
 import { tracksRoutes } from './routes/tracks';
 import { guaraniService } from './services/guarani.service';
 import { moodleService } from './services/moodle.service';
@@ -74,7 +75,7 @@ p { color:#94a3b8;line-height:1.7;margin-bottom:12px }
 ${isDemo ? '<p style="color:#fbbf24">⚠️ <strong>Modo demo:</strong> integraciones con Moodle y Guaraní funcionan con datos simulados. Solicitar credenciales reales a la DTI para activar producción.</p>' : ''}
 <div class="grid">
 <div class="item"><h3>API</h3><div class="value">v1</div></div>
-<div class="item"><h3>Endpoints</h3><div class="value">43</div></div>
+<div class="item"><h3>Endpoints</h3><div class="value">45</div></div>
 <div class="item"><h3>Tests</h3><div class="value">65 ✓</div></div>
 <div class="item"><h3>Docs</h3><div class="value">Scalar</div></div>
 </div>
@@ -135,6 +136,7 @@ app.route('/api/v1/rules', rulesRoutes);
 app.route('/api/v1/overrides', overridesRoutes);
 app.route('/api/v1/integrations', integrationsRoutes);
 app.route('/api/v1/admin', adminRoutes);
+app.route('/api/v1/system', systemRoutes);
 
 app.onError(errorHandler);
 app.notFound(notFoundHandler);
