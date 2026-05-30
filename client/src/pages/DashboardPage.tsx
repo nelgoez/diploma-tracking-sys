@@ -44,9 +44,9 @@ export function DashboardPage() {
 
   useEffect(() => {
     const fetchData = async () => {
+      const userId = localStorage.getItem('userId') || '';
       try {
         const token = localStorage.getItem('token') || '';
-        const userId = localStorage.getItem('userId') || '';
 
         const tokenPayload = token.split('.')[1];
         const claims = JSON.parse(atob(tokenPayload)) as { role: string, email: string };
@@ -88,7 +88,7 @@ export function DashboardPage() {
       }
       catch (_err) {
         setProgress({
-          student_id: userId || 'unknown',
+          student_id: localStorage.getItem('userId') || 'unknown',
           courses_completed: 2,
           courses_total: 5,
           credits_accumulated: 8,
@@ -144,9 +144,7 @@ export function DashboardPage() {
   return (
     <Box>
       <Typography variant="h4" gutterBottom>
-        {t('dashboard.welcome')}
-        ,
-        {localStorage.getItem('userName') || t('dashboard.user_fallback')}
+        {`${t('dashboard.welcome')}, ${localStorage.getItem('userName') || t('dashboard.user_fallback')}`}
       </Typography>
 
       <Grid container spacing={3}>
