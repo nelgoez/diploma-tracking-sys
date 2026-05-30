@@ -2,6 +2,7 @@ import type { HonoVariables } from '../types/hono';
 import { Hono } from 'hono';
 import { supabaseAdmin } from '../db/supabase';
 import { authenticate, requireRole } from '../middleware/auth';
+import { logAudit } from '../services/audit-log';
 import { createEligibilityDataAccess } from '../services/eligibility-data-access';
 import { guaraniService } from '../services/guarani.service';
 import { evaluateTrackEligibility } from '../services/rule-engine';
@@ -14,6 +15,7 @@ enrollments.get('/', async (c) => {
   const studentId = c.req.query('student_id');
   const courseId = c.req.query('course_id');
   const examHistory = c.req.query('exam_history') === 'true';
+  const cohort = c.req.query('cohort');
 
   // eslint-disable-next-line ts/no-explicit-any
   let query: any = supabaseAdmin
@@ -36,6 +38,10 @@ enrollments.get('/', async (c) => {
 
   if (courseId) {
     query = query.eq('course_id', courseId);
+  }
+
+  if (cohort) {
+    query = query.like('exam_date', `${cohort}%`);
   }
 
   const { data, error } = await query;
@@ -266,6 +272,7 @@ enrollments.put('/:id/exam', requireRole('coordinador', 'admin', 'sysadmin'), as
 });
 
 enrollments.put('/:id/grade', requireRole('coordinador', 'admin', 'sysadmin'), async (c) => {
+  const auth = c.get('auth');
   const { id } = c.req.param();
   const body = await c.req.json();
   const grade = Number(body.qualification);
@@ -321,6 +328,20 @@ enrollments.put('/:id/grade', requireRole('coordinador', 'admin', 'sysadmin'), a
     }).catch(err =>
       console.error('[Enrollments] Background diploma push to Guaraní failed:', err),
     );
+
+    await logAudit({
+      userId: auth?.userId,
+      action: 'grade_recorded',
+      entityType: 'enrollment',
+      entityId: enrollment.id,
+      details: {
+        grade,
+        exam_status: grade >= 4 ? 'aprobado' : 'desaprobado',
+        student_id: data.student_id,
+        course_id: enrollment.course_id,
+        track_id: enrollment.track_id,
+      },
+    });
   }
 
   return c.json(data);

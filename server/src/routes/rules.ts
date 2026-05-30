@@ -2,6 +2,7 @@ import type { HonoVariables } from '../types/hono';
 import { Hono } from 'hono';
 import { supabaseAdmin as supabase } from '../db/supabase';
 import { authenticate, requireRole } from '../middleware/auth';
+import { logAudit } from '../services/audit-log';
 import { createEligibilityDataAccess } from '../services/eligibility-data-access';
 import { evaluateTrackEligibility } from '../services/rule-engine';
 
@@ -71,10 +72,19 @@ rules.post('/', requireRole('coordinador', 'admin', 'sysadmin'), async (c) => {
     }
   }
 
+  await logAudit({
+    userId: auth.userId,
+    action: 'rule_created',
+    entityType: 'prerequisite_rule',
+    entityId: rule.id,
+    details: { condition: body.condition || 'ALL', target_course_id: body.target_course_id },
+  });
+
   return c.json(rule, 201);
 });
 
 rules.put('/:id', requireRole('coordinador', 'admin', 'sysadmin'), async (c) => {
+  const auth = c.get('auth');
   const { id } = c.req.param();
   const body = await c.req.json();
 
@@ -108,10 +118,19 @@ rules.put('/:id', requireRole('coordinador', 'admin', 'sysadmin'), async (c) => 
     }
   }
 
+  await logAudit({
+    userId: auth.userId,
+    action: 'rule_updated',
+    entityType: 'prerequisite_rule',
+    entityId: id,
+    details: { condition: body.condition, is_active: body.is_active, target_course_id: body.target_course_id },
+  });
+
   return c.json(rule);
 });
 
 rules.delete('/:id', requireRole('admin', 'sysadmin'), async (c) => {
+  const auth = c.get('auth');
   const { id } = c.req.param();
 
   await supabase.from('prerequisite_sources').delete().eq('rule_id', id);
@@ -124,6 +143,13 @@ rules.delete('/:id', requireRole('admin', 'sysadmin'), async (c) => {
   if (error) {
     return c.json({ error: 'Failed to delete rule' }, 500);
   }
+
+  await logAudit({
+    userId: auth.userId,
+    action: 'rule_deleted',
+    entityType: 'prerequisite_rule',
+    entityId: id,
+  });
 
   return c.json({ success: true });
 });

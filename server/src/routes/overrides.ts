@@ -4,6 +4,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { supabaseAdmin as supabase } from '../db/supabase';
 import { authenticate, requireRole } from '../middleware/auth';
+import { logAudit } from '../services/audit-log';
 
 const overrides = new Hono<{ Variables: HonoVariables }>();
 
@@ -86,10 +87,19 @@ overrides.post('/', requireRole('coordinador', 'admin', 'sysadmin'), zValidator(
     return c.json({ error: 'Failed to create override' }, 500);
   }
 
+  await logAudit({
+    userId: auth.userId,
+    action: 'override_created',
+    entityType: 'manual_override',
+    entityId: override.id,
+    details: { student_id, rule_id, reason, expires_at: expires_at ?? null },
+  });
+
   return c.json(override, 201);
 });
 
 overrides.put('/:id/revoke', requireRole('coordinador', 'admin', 'sysadmin'), async (c) => {
+  const auth = c.get('auth');
   const { id } = c.req.param();
 
   const { data: existing } = await supabase
@@ -119,6 +129,13 @@ overrides.put('/:id/revoke', requireRole('coordinador', 'admin', 'sysadmin'), as
   if (error) {
     return c.json({ error: 'Failed to revoke override' }, 500);
   }
+
+  await logAudit({
+    userId: auth.userId,
+    action: 'override_revoked',
+    entityType: 'manual_override',
+    entityId: id,
+  });
 
   return c.json(override);
 });
