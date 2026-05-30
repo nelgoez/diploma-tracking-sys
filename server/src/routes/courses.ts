@@ -11,7 +11,7 @@ courses.use('/*', authenticate);
 courses.get('/', async (c) => {
   const trackId = c.req.query('track_id');
 
-  let query = supabase
+  let query = supabaseAdmin
     .from('courses')
     .select(`
       *,
