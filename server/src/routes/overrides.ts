@@ -2,7 +2,7 @@ import type { HonoVariables } from '../types/hono';
 import { zValidator } from '@hono/zod-validator';
 import { Hono } from 'hono';
 import { z } from 'zod';
-import { supabase } from '../db/supabase';
+import { supabaseAdmin as supabase } from '../db/supabase';
 import { authenticate, requireRole } from '../middleware/auth';
 
 const overrides = new Hono<{ Variables: HonoVariables }>();

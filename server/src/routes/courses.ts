@@ -36,7 +36,7 @@ courses.get('/', async (c) => {
 courses.get('/:id', async (c) => {
   const { id } = c.req.param();
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('courses')
     .select(`
       *,

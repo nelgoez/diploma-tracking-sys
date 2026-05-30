@@ -1,6 +1,6 @@
 import type { HonoVariables } from '../types/hono';
 import { Hono } from 'hono';
-import { supabase, supabaseAdmin } from '../db/supabase';
+import { supabaseAdmin } from '../db/supabase';
 import { authenticate, requireRole } from '../middleware/auth';
 import { createEligibilityDataAccess } from '../services/eligibility-data-access';
 import { guaraniService } from '../services/guarani.service';
@@ -94,7 +94,7 @@ enrollments.post('/', async (c) => {
     return c.json({ error: 'Forbidden' }, 403);
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('enrollments')
     .insert({
       student_id: body.student_id,

@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { supabase } from '../db/supabase';
+import { supabaseAdmin as supabase } from '../db/supabase';
 import { authenticate, requireRole } from '../middleware/auth';
 import { guaraniService } from '../services/guarani.service';
 import { logSyncComplete, logSyncStart } from '../services/integration-logs';

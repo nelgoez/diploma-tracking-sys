@@ -1,7 +1,7 @@
 import { zValidator } from '@hono/zod-validator';
 import { Hono } from 'hono';
 import { z } from 'zod';
-import { supabase, supabaseAdmin } from '../db/supabase';
+import { supabaseAdmin } from '../db/supabase';
 import { authenticate, requireRole } from '../middleware/auth';
 
 const admin = new Hono();
@@ -20,7 +20,7 @@ const createUserSchema = z.object({
 admin.post('/users', zValidator('json', createUserSchema), async (c) => {
   const { email, password, name, role, dni } = c.req.valid('json');
 
-  const { data: existing } = await supabase
+  const { data: existing } = await supabaseAdmin
     .from('students')
     .select('id')
     .eq('email', email)
@@ -112,7 +112,7 @@ admin.get('/students', async (c) => {
   const search = c.req.query('search') || '';
   const status = c.req.query('status');
 
-  let query = supabase
+  let query = supabaseAdmin
     .from('students')
     .select(`
       *,
@@ -148,7 +148,7 @@ admin.get('/students', async (c) => {
 });
 
 admin.get('/courses', async (c) => {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('courses')
     .select(`
       *,
@@ -167,7 +167,7 @@ admin.get('/courses', async (c) => {
 });
 
 admin.get('/tracks', async (c) => {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('tracks')
     .select(`
       *,

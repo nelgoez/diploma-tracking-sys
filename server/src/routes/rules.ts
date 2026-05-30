@@ -1,7 +1,8 @@
 import type { HonoVariables } from '../types/hono';
 import { Hono } from 'hono';
-import { supabase, supabaseAdmin } from '../db/supabase';
+import { supabaseAdmin as supabase } from '../db/supabase';
 import { authenticate, requireRole } from '../middleware/auth';
+import { createEligibilityDataAccess } from '../services/eligibility-data-access';
 import { evaluateTrackEligibility } from '../services/rule-engine';
 
 const rules = new Hono<{ Variables: HonoVariables }>();
@@ -138,39 +139,7 @@ rules.post('/evaluate', async (c) => {
   const result = await evaluateTrackEligibility({
     studentId: student_id,
     trackId: track_id,
-    getRulesForTrack: async (tid) => {
-      const { data } = await supabaseAdmin
-        .from('prerequisite_rules')
-        .select('*')
-        .eq('target_course_id', tid)
-        .eq('is_active', true)
-        .order('order_index', { ascending: true });
-      return data || [];
-    },
-    getSourcesForRules: async (ruleIds) => {
-      const { data } = await supabaseAdmin
-        .from('prerequisite_sources')
-        .select('*')
-        .in('rule_id', ruleIds);
-      return data || [];
-    },
-    getStudentCertificates: async (sid) => {
-      const { data } = await supabaseAdmin
-        .from('certificates')
-        .select('course_id')
-        .eq('student_id', sid)
-        .eq('status', 'approved')
-        .eq('is_valid', true);
-      return (data || []).map(c => c.course_id);
-    },
-    getActiveOverrides: async (sid) => {
-      const { data } = await supabaseAdmin
-        .from('manual_overrides')
-        .select('*')
-        .eq('student_id', sid)
-        .eq('status', 'active');
-      return data || [];
-    },
+    ...createEligibilityDataAccess(),
   });
 
   return c.json(result);
