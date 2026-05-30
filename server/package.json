@@ -9,7 +9,8 @@
     "typecheck": "tsc --noEmit",
     "db:types": "supabase gen types typescript --local > src/db/database.types.ts",
     "test": "bun test",
-    "test:coverage": "bun test --coverage"
+    "test:coverage": "bun test --coverage",
+    "seed": "bun run src/seed.ts"
   },
   "dependencies": {
     "@hono/zod-validator": "^0.7.6",
