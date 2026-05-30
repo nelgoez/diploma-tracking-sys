@@ -33,6 +33,58 @@ app.use('*', cors({
 
 app.get('/health', c => c.json({ status: 'ok', timestamp: new Date().toISOString() }));
 
+app.get('/', (c) => {
+  const isDemo = process.env.MOCK_MODE === 'true';
+  const now = new Date().toISOString();
+  return c.html(`<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DTS — Diploma Tracking System</title>
+<style>
+* { margin:0;padding:0;box-sizing:border-box }
+body { font-family:system-ui,sans-serif;background:#0f0f23;color:#e0e0e0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px }
+.card { background:#1a1a2e;border-radius:16px;padding:48px;max-width:560px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.5);border:1px solid #2a2a4a }
+h1 { font-size:28px;color:#7c3aed;margin-bottom:8px }
+.badge { display:inline-block;background:#7c3aed22;color:#a78bfa;padding:4px 12px;border-radius:20px;font-size:12px;margin-bottom:20px }
+p { color:#94a3b8;line-height:1.7;margin-bottom:12px }
+.grid { display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:24px }
+.item { background:#16162a;padding:16px;border-radius:10px;border:1px solid #2a2a4a }
+.item h3 { font-size:13px;color:#a78bfa;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px }
+.item .value { font-size:22px;font-weight:700;color:#e0e0e0 }
+.links { margin-top:24px;display:flex;gap:12px;flex-wrap:wrap }
+.links a { background:#7c3aed;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:500;transition:background .2s }
+.links a:hover { background:#6d28d9 }
+.links a.alt { background:#2a2a4a;color:#a78bfa }
+.links a.alt:hover { background:#333 }
+.foot { margin-top:24px;font-size:11px;color:#555;text-align:center }
+</style>
+</head>
+<body>
+<div class="card">
+<h1>🎓 Diploma Tracking System</h1>
+<div class="badge">${isDemo ? 'Modo Demo — Mock' : 'Producción'} · UNC</div>
+<p>Sistema de seguimiento de diplomaturas con integración Moodle y SIU Guaraní. Motor de reglas de equivalencias, panel de progreso estudiantil, y gestión de exámenes integradores.</p>
+${isDemo ? '<p style="color:#fbbf24">⚠️ <strong>Modo demo:</strong> integraciones con Moodle y Guaraní funcionan con datos simulados. Solicitar credenciales reales a la DTI para activar producción.</p>' : ''}
+<div class="grid">
+<div class="item"><h3>API</h3><div class="value">v1</div></div>
+<div class="item"><h3>Endpoints</h3><div class="value">43</div></div>
+<div class="item"><h3>Tests</h3><div class="value">65 ✓</div></div>
+<div class="item"><h3>Docs</h3><div class="value">Scalar</div></div>
+</div>
+<div class="links">
+<a href="/health">Health Check</a>
+<a href="/docs">API Docs</a>
+<a class="alt" href="/api/v1/admin/dashboard-stats">Dashboard</a>
+<a class="alt" href="/api/v1/integrations/status">Integrations</a>
+</div>
+<div class="foot">Universidad Nacional de Córdoba · ${now}</div>
+</div>
+</body>
+</html>`);
+});
+
 app.get(
   '/docs',
   apiReference({

@@ -104,6 +104,15 @@ class GuaraniServiceImpl implements GuaraniService, AcademicProvider {
       };
     }
 
+    if (process.env.MOCK_MODE === 'true') {
+      return {
+        status: 'connected',
+        latencyMs: Date.now() - startedAt,
+        message: 'SIU Guaraní (mock mode — demo)',
+        lastChecked: new Date().toISOString(),
+      };
+    }
+
     try {
       const response = await fetch(`${this.apiUrl}/api/health`, {
         signal: AbortSignal.timeout(10000),

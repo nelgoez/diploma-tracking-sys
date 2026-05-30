@@ -282,6 +282,15 @@ class MoodleServiceImpl implements MoodleService, CertificateProvider {
       };
     }
 
+    if (process.env.MOCK_MODE === 'true') {
+      return {
+        status: 'connected',
+        latencyMs: Date.now() - startedAt,
+        message: 'Campus Virtual UNC (mock mode — demo)',
+        lastChecked: new Date().toISOString(),
+      };
+    }
+
     try {
       const data = await moodleFetch<{ sitename?: string }>('core_webservice_get_site_info');
 

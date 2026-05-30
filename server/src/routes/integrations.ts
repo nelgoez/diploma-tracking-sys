@@ -30,6 +30,7 @@ integrations.get('/status', requireRole('admin', 'sysadmin'), async (c) => {
     .maybeSingle();
 
   return c.json({
+    demo: process.env.MOCK_MODE === 'true',
     moodle: {
       status: moodleHealth.status,
       last_sync: moodleLogs?.created_at || null,
