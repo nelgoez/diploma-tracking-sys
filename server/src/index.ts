@@ -27,7 +27,12 @@ const app = new Hono();
 app.use('*', logger());
 app.use('*', prettyJSON());
 app.use('*', cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+  origin: (origin) => {
+    const allowed = process.env.CORS_ORIGIN || 'http://localhost:5173';
+    if (!origin) { return allowed; }
+    if (origin.endsWith('.vercel.app') || origin === allowed) { return origin; }
+    return allowed;
+  },
   credentials: true,
 }));
 
