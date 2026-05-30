@@ -18,7 +18,8 @@ const refreshSchema = z.object({
 });
 
 function getJwtSecret(): Uint8Array {
-  const secret = process.env.JWT_SECRET || 'placeholder-secret-key-minimum-32-characters';
+  const secret = process.env.JWT_SECRET;
+  if (!secret) { throw new Error('JWT_SECRET environment variable is required'); }
   return new TextEncoder().encode(secret);
 }
 
