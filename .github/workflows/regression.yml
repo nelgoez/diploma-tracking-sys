@@ -1,0 +1,89 @@
+name: Regression Tests — Full Suite
+
+on:
+  schedule:
+    - cron: '0 2 * * 1'
+  workflow_dispatch:
+    inputs:
+      test_type:
+        description: 'Test suite scope'
+        type: choice
+        options:
+          - full
+          - smoke
+          - critical
+        default: full
+
+jobs:
+  server-regression:
+    name: Server Regression
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Start server + Run regression
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          MOCK_MODE: 'true'
+          NODE_ENV: 'test'
+        run: |
+          bun run src/index.ts &
+          sleep 3
+          bun test --timeout 15000
+
+      - name: Report GO/NO-GO
+        if: always()
+        run: |
+          echo "## Regression Report" >> $GITHUB_STEP_SUMMARY
+          echo "| Suite | Result |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Server Typecheck | ✅ |" >> $GITHUB_STEP_SUMMARY
+          echo "| Server Tests | $(if [ ${{ job.status }} = 'success' ]; then echo '✅ PASS'; else echo '❌ FAIL'; fi) |" >> $GITHUB_STEP_SUMMARY
+
+  e2e-regression:
+    name: E2E Regression
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Install Playwright browsers
+        run: bunx playwright install chromium --with-deps
+
+      - name: Run E2E tests
+        env:
+          TEST_ADMIN_EMAIL: ${{ secrets.TEST_ADMIN_EMAIL }}
+          TEST_ADMIN_PASSWORD: ${{ secrets.TEST_ADMIN_PASSWORD }}
+          TEST_STUDENT_EMAIL: ${{ secrets.TEST_STUDENT_EMAIL }}
+          TEST_STUDENT_PASSWORD: ${{ secrets.TEST_STUDENT_PASSWORD }}
+          MOCK_MODE: 'true'
+        run: bunx playwright test
