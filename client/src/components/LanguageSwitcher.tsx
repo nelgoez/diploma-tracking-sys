@@ -25,12 +25,13 @@ export function LanguageSwitcher() {
   };
 
   return (
-    <div style={{ position: 'fixed', top: 80, right: 16, zIndex: 1100 }}>
+    <>
       <Button
         onClick={handleClick}
         variant="outlined"
         size="small"
-        sx={{ textTransform: 'none' }}
+        color="inherit"
+        sx={{ textTransform: 'none', borderColor: 'rgba(255,255,255,0.5)', color: '#fff' }}
       >
         {t('language.switch')}
         :
@@ -47,6 +48,6 @@ export function LanguageSwitcher() {
           </MenuItem>
         ))}
       </Menu>
-    </div>
+    </>
   );
 }

@@ -22,6 +22,7 @@ import {
 } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { LanguageSwitcher } from '../LanguageSwitcher';
 
 const drawerWidth = 240;
 
@@ -87,7 +88,8 @@ export function MainLayout() {
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
             {t('app.title')}
           </Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mr: 2 }}>
+          <LanguageSwitcher />
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, ml: 2, mr: 2 }}>
             <Typography variant="body2" sx={{ opacity: 0.9 }} data-testid="user-name">
               {userName}
               {' '}

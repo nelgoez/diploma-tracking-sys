@@ -11,6 +11,7 @@ import {
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { LanguageSwitcher } from '../components/LanguageSwitcher';
 import { api } from '../lib/api';
 
 export function LoginPage() {
@@ -55,6 +56,9 @@ export function LoginPage() {
         bgcolor: 'background.default',
       }}
     >
+      <Box sx={{ position: 'fixed', top: 16, right: 16 }}>
+        <LanguageSwitcher />
+      </Box>
       <Card sx={{ maxWidth: 400, width: '100%', mx: 2 }}>
         <CardContent sx={{ p: 4 }}>
           <Typography variant="h4" component="h1" gutterBottom textAlign="center">

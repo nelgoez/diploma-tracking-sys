@@ -1,6 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 
-import { LanguageSwitcher } from './components/LanguageSwitcher';
 import { MainLayout } from './components/layout/MainLayout';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { AdminPage } from './pages/AdminPage';
@@ -14,7 +13,6 @@ import { SysAdminPage } from './pages/SysAdminPage';
 export default function App() {
   return (
     <>
-      <LanguageSwitcher />
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route
