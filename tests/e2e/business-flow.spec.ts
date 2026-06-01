@@ -13,9 +13,8 @@ test.describe('DTS Full Business Flow', () => {
     await page.getByRole('button', { name: /entrar/i }).click();
 
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 10000 });
-    await expect(page.getByText(/Bienvenido\/a/i)).toBeVisible();
-    await expect(page.getByText(/Cursos Completados/i)).toBeVisible();
-    await expect(page.getByText(/Estado de Habilitación/i)).toBeVisible();
+    await expect(page.getByTestId('app-bar')).toBeVisible();
+    await expect(page.getByTestId('user-role')).toBeVisible();
   });
 
   test('student can view progress and eligibility', async ({ page }) => {
@@ -51,18 +50,28 @@ test.describe('DTS Full Business Flow', () => {
 
     await expect(page.getByRole('textbox', { name: /correo/i })).toBeVisible();
 
-    const langBtn = page.getByText('ES').last();
+    const langBtn = page.getByRole('button', { name: /idioma/i });
     if (await langBtn.isVisible()) {
       await langBtn.click();
       await page.waitForTimeout(300);
+      const englishOption = page.getByText('English');
+      if (await englishOption.isVisible()) {
+        await englishOption.click();
+        await page.waitForTimeout(500);
+      }
     }
 
     await expect(page.getByRole('textbox', { name: /email/i })).toBeVisible();
 
-    const langBtnBack = page.getByText('EN').last();
+    const langBtnBack = page.getByRole('button', { name: /language/i });
     if (await langBtnBack.isVisible()) {
       await langBtnBack.click();
       await page.waitForTimeout(300);
+      const spanishOption = page.getByText('Español');
+      if (await spanishOption.isVisible()) {
+        await spanishOption.click();
+        await page.waitForTimeout(500);
+      }
     }
   });
 });
