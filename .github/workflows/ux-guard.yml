@@ -1,0 +1,58 @@
+name: UX Guard — Smoke Tests
+
+on:
+  push:
+    branches: [main, staging]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  ux-smoke:
+    name: UX Smoke — Routing, Identity, Roles, Sync
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install client dependencies
+        run: bun install
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+
+      - name: Install Playwright Chromium only
+        run: bunx playwright install chromium --with-deps
+
+      - name: Run UX smoke tests
+        run: bunx playwright test --config=playwright.config.ts ux-smoke.spec.ts
+        env:
+          CI: 'true'
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          MOCK_MODE: 'true'
+          NODE_ENV: 'test'
+
+      - name: Upload test report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ux-smoke-report
+          path: |
+            client/playwright-report/
+            client/test-results/
+          retention-days: 7

@@ -78,6 +78,7 @@ export function LoginPage() {
               value={email}
               onChange={e => setEmail(e.target.value)}
               required
+              inputProps={{ 'data-testid': 'email-input' }}
               sx={{ mb: 2 }}
             />
 
@@ -88,6 +89,7 @@ export function LoginPage() {
               value={password}
               onChange={e => setPassword(e.target.value)}
               required
+              inputProps={{ 'data-testid': 'password-input' }}
               sx={{ mb: 3 }}
             />
 
@@ -97,6 +99,7 @@ export function LoginPage() {
               fullWidth
               size="large"
               disabled={loading}
+              data-testid="login-btn"
             >
               {loading ? <CircularProgress size={24} /> : t('login.submit')}
             </Button>

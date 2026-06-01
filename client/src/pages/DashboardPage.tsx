@@ -273,6 +273,7 @@ export function DashboardPage() {
                         fullWidth
                         onClick={() => { void handleRegisterExam(); }}
                         disabled={registering}
+                        data-testid="exam-register-btn"
                       >
                         {registering ? <CircularProgress size={20} color="inherit" /> : t('dashboard.register_exam')}
                       </Button>

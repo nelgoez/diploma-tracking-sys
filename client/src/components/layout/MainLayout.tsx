@@ -82,13 +82,13 @@ export function MainLayout() {
 
   return (
     <Box sx={{ display: 'flex' }}>
-      <AppBar position="fixed" sx={{ zIndex: theme => theme.zIndex.drawer + 1 }}>
+      <AppBar position="fixed" sx={{ zIndex: theme => theme.zIndex.drawer + 1 }} data-testid="app-bar">
         <Toolbar>
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
             {t('app.title')}
           </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mr: 2 }}>
-            <Typography variant="body2" sx={{ opacity: 0.9 }}>
+            <Typography variant="body2" sx={{ opacity: 0.9 }} data-testid="user-name">
               {userName}
               {' '}
               (
@@ -98,6 +98,7 @@ export function MainLayout() {
             <Chip
               label={roleLabels[userRole] || userRole}
               size="small"
+              data-testid="user-role"
               sx={{
                 color: '#fff',
                 fontWeight: 600,
@@ -105,7 +106,7 @@ export function MainLayout() {
               }}
             />
           </Box>
-          <IconButton color="inherit" onClick={handleLogout} title={t('nav.logout')}>
+          <IconButton color="inherit" onClick={handleLogout} title={t('nav.logout')} data-testid="logout-btn">
             <LogoutIcon />
           </IconButton>
         </Toolbar>
@@ -127,6 +128,7 @@ export function MainLayout() {
               return (
                 <ListItem key={item.path} disablePadding>
                   <ListItemButton
+                    data-testid={`nav-${item.labelKey.replace('nav.', '')}`}
                     onClick={() => { void navigate(item.path); }}
                     selected={isActive}
                     sx={{
@@ -149,6 +151,7 @@ export function MainLayout() {
       </Drawer>
       <Box
         component="main"
+        data-testid="main-content"
         sx={{ flexGrow: 1, bgcolor: 'background.default', p: 3 }}
       >
         <Toolbar />

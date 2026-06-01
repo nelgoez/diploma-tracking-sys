@@ -25,7 +25,7 @@ export function LanguageSwitcher() {
   };
 
   return (
-    <div style={{ position: 'fixed', top: 16, right: 16, zIndex: 9999 }}>
+    <div style={{ position: 'fixed', top: 80, right: 16, zIndex: 1100 }}>
       <Button
         onClick={handleClick}
         variant="outlined"
