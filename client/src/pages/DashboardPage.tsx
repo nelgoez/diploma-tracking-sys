@@ -10,6 +10,7 @@ import {
   Card,
   CardContent,
   Chip,
+  CircularProgress,
   Grid,
   LinearProgress,
   Skeleton,
@@ -41,50 +42,59 @@ export function DashboardPage() {
   const [progress, setProgress] = useState<StudentProgress | null>(null);
   const [eligibility, setEligibility] = useState<EligibilityStatus | null>(null);
   const [loading, setLoading] = useState(true);
+  const [registering, setRegistering] = useState(false);
+  const [registrationMessage, setRegistrationMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+  const [isStudent, setIsStudent] = useState(false);
+
+  const fetchStudentData = async () => {
+    const userId = localStorage.getItem('userId') || '';
+    const token = localStorage.getItem('token') || '';
+
+    const tokenPayload = token.split('.')[1];
+    const claims = JSON.parse(atob(tokenPayload)) as { role: string, email: string };
+
+    if (claims.role === 'admin' || claims.role === 'coordinador' || claims.role === 'sysadmin') {
+      setIsStudent(false);
+      const stats = await api.get<{
+        total_students: number
+        active_students: number
+        active_tracks: number
+        total_certificates: number
+        completion_rate: number
+      }>('/admin/dashboard-stats', token);
+
+      setProgress({
+        student_id: userId,
+        courses_completed: 0,
+        courses_total: 0,
+        credits_accumulated: 0,
+        credits_required: 0,
+        progress_percentage: 0,
+        status: 'on_track',
+      });
+
+      setEligibility({
+        is_eligible: false,
+        eligibility_type: 'automatic',
+        missing_prerequisites: [],
+        reason: `Admin: ${stats.total_students} estudiantes, ${stats.active_tracks} tracks activos`,
+      });
+    }
+    else {
+      setIsStudent(true);
+      const [progressData, eligibilityResult] = await Promise.all([
+        api.get<StudentProgress>(`/students/${userId}/progress`, token),
+        api.get<EligibilityStatus>(`/enrollments/eligibility/${userId}`, token),
+      ]);
+      setProgress(progressData);
+      setEligibility(eligibilityResult);
+    }
+  };
 
   useEffect(() => {
-    const fetchData = async () => {
-      const userId = localStorage.getItem('userId') || '';
+    const init = async () => {
       try {
-        const token = localStorage.getItem('token') || '';
-
-        const tokenPayload = token.split('.')[1];
-        const claims = JSON.parse(atob(tokenPayload)) as { role: string, email: string };
-
-        if (claims.role === 'admin' || claims.role === 'coordinador' || claims.role === 'sysadmin') {
-          const stats = await api.get<{
-            total_students: number
-            active_students: number
-            active_tracks: number
-            total_certificates: number
-            completion_rate: number
-          }>('/admin/dashboard-stats', token);
-
-          setProgress({
-            student_id: userId,
-            courses_completed: 0,
-            courses_total: 0,
-            credits_accumulated: 0,
-            credits_required: 0,
-            progress_percentage: 0,
-            status: 'on_track',
-          });
-
-          setEligibility({
-            is_eligible: false,
-            eligibility_type: 'automatic',
-            missing_prerequisites: [],
-            reason: `Admin: ${stats.total_students} estudiantes, ${stats.active_tracks} tracks activos`,
-          });
-        }
-        else {
-          const [progressData, eligibilityResult] = await Promise.all([
-            api.get<StudentProgress>(`/students/${userId}/progress`, token),
-            api.get<EligibilityStatus>(`/enrollments/eligibility/${userId}`, token),
-          ]);
-          setProgress(progressData);
-          setEligibility(eligibilityResult);
-        }
+        await fetchStudentData();
       }
       catch (_err) {
         setProgress({
@@ -109,8 +119,29 @@ export function DashboardPage() {
       }
     };
 
-    void fetchData();
+    void init();
   }, []);
+
+  const handleRegisterExam = async () => {
+    setRegistering(true);
+    setRegistrationMessage(null);
+    const userId = localStorage.getItem('userId') || '';
+    const token = localStorage.getItem('token') || '';
+    try {
+      await api.post('/enrollments', {
+        student_id: userId,
+        exam_date: new Date().toISOString(),
+      }, token);
+      setRegistrationMessage({ type: 'success', text: t('dashboard.exam_registered') });
+      await fetchStudentData();
+    }
+    catch {
+      setRegistrationMessage({ type: 'error', text: t('dashboard.exam_registration_error') });
+    }
+    finally {
+      setRegistering(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -233,21 +264,36 @@ export function DashboardPage() {
                 sx={{ mb: 2 }}
               />
 
-              {eligibility?.is_eligible
+              {eligibility?.is_eligible && isStudent
                 ? (
-                    <Button variant="contained" color="success" fullWidth>
-                      {t('dashboard.register_exam')}
-                    </Button>
+                    <Box>
+                      <Button
+                        variant="contained"
+                        color="success"
+                        fullWidth
+                        onClick={() => { void handleRegisterExam(); }}
+                        disabled={registering}
+                      >
+                        {registering ? <CircularProgress size={20} color="inherit" /> : t('dashboard.register_exam')}
+                      </Button>
+                      {registrationMessage && (
+                        <Alert severity={registrationMessage.type} sx={{ mt: 1 }}>
+                          {registrationMessage.text}
+                        </Alert>
+                      )}
+                    </Box>
                   )
-                : (
-                    <Alert severity="warning">
-                      {t('dashboard.missing_prerequisites')}
-                      :
-                      {eligibility?.missing_prerequisites.length}
-                      {' '}
-                      {t('dashboard.courses')}
-                    </Alert>
-                  )}
+                : eligibility?.is_eligible && !isStudent
+                  ? null
+                  : (
+                      <Alert severity="warning">
+                        {t('dashboard.missing_prerequisites')}
+                        :
+                        {eligibility?.missing_prerequisites.length}
+                        {' '}
+                        {t('dashboard.courses')}
+                      </Alert>
+                    )}
             </CardContent>
           </Card>
         </Grid>

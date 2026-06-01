@@ -213,4 +213,31 @@ courses.patch('/:id', requireRole('admin', 'sysadmin'), zValidator('json', updat
   return c.json(data);
 });
 
+courses.delete('/:id', requireRole('admin', 'sysadmin'), async (c) => {
+  const { id } = c.req.param();
+
+  const { data: existing } = await supabaseAdmin
+    .from('courses')
+    .select('id')
+    .eq('id', id)
+    .single();
+
+  if (!existing) {
+    return c.json({ error: 'Course not found' }, 404);
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from('courses')
+    .update({ is_active: false })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) {
+    return c.json({ error: 'Failed to delete course' }, 500);
+  }
+
+  return c.json({ success: true, data });
+});
+
 export { courses as coursesRoutes };

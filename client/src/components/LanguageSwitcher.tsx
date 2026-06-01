@@ -1,7 +1,8 @@
-import { useState } from "react";
-import { Button, Menu, MenuItem } from "@mui/material";
-import { useTranslation } from "react-i18next";
-import { setLanguage, getAvailableLanguages, type Language } from "../i18n";
+import type { Language } from '../i18n';
+import { Button, Menu, MenuItem } from '@mui/material';
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { getAvailableLanguages, setLanguage } from '../i18n';
 
 export function LanguageSwitcher() {
   const { i18n, t } = useTranslation();
@@ -19,22 +20,24 @@ export function LanguageSwitcher() {
 
   const handleLanguageChange = (lang: Language) => {
     setLanguage(lang);
-    i18n.changeLanguage(lang);
+    void i18n.changeLanguage(lang);
     handleClose();
   };
 
   return (
-    <div style={{ position: "fixed", top: 16, right: 16, zIndex: 9999 }}>
+    <div style={{ position: 'fixed', top: 16, right: 16, zIndex: 9999 }}>
       <Button
         onClick={handleClick}
         variant="outlined"
         size="small"
-        sx={{ textTransform: "none" }}
+        sx={{ textTransform: 'none' }}
       >
-        {t("language.switch")}: {i18n.language.toUpperCase()}
+        {t('language.switch')}
+        :
+        {(i18n.language || 'es').toUpperCase()}
       </Button>
       <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleClose}>
-        {languages.map((lang) => (
+        {languages.map(lang => (
           <MenuItem
             key={lang.code}
             onClick={() => handleLanguageChange(lang.code)}
