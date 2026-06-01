@@ -35,9 +35,9 @@ test.describe('DTS Full Business Flow', () => {
     await page.getByRole('button', { name: /entrar/i }).click();
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 10000 });
 
-    const navItems = [/Panel Principal/, /Certificados/, /Cursos/, /Integraciones/, /Administración/];
-    for (const item of navItems) {
-      const link = page.getByText(item);
+    const navIds = ['nav-dashboard', 'nav-certificates', 'nav-courses', 'nav-integrations', 'nav-admin'];
+    for (const id of navIds) {
+      const link = page.getByTestId(id);
       if (await link.isVisible()) {
         await link.click();
         await page.waitForTimeout(500);

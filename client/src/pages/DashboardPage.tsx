@@ -1,6 +1,10 @@
 import {
+  Assignment as AssignmentIcon,
   CheckCircle as CheckCircleIcon,
+  EmojiEvents as DiplomaIcon,
+  People as PeopleIcon,
   School as SchoolIcon,
+  SyncProblem as SyncErrorIcon,
   TrendingUp as TrendingUpIcon,
 } from '@mui/icons-material';
 import {
@@ -37,10 +41,23 @@ interface EligibilityStatus {
   reason: string | null
 }
 
+interface AdminStats {
+  total_students: number
+  active_students: number
+  active_tracks: number
+  total_certificates: number
+  completion_rate: number
+  eligible_count: number
+  not_eligible_count: number
+  pending_enrollments: number
+  recent_sync_errors: number
+}
+
 export function DashboardPage() {
   const { t } = useTranslation();
   const [progress, setProgress] = useState<StudentProgress | null>(null);
   const [eligibility, setEligibility] = useState<EligibilityStatus | null>(null);
+  const [adminStats, setAdminStats] = useState<AdminStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [registering, setRegistering] = useState(false);
   const [registrationMessage, setRegistrationMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
@@ -55,30 +72,13 @@ export function DashboardPage() {
 
     if (claims.role === 'admin' || claims.role === 'coordinador' || claims.role === 'sysadmin') {
       setIsStudent(false);
-      const stats = await api.get<{
-        total_students: number
-        active_students: number
-        active_tracks: number
-        total_certificates: number
-        completion_rate: number
-      }>('/admin/dashboard-stats', token);
-
-      setProgress({
-        student_id: userId,
-        courses_completed: 0,
-        courses_total: 0,
-        credits_accumulated: 0,
-        credits_required: 0,
-        progress_percentage: 0,
-        status: 'on_track',
-      });
-
-      setEligibility({
-        is_eligible: false,
-        eligibility_type: 'automatic',
-        missing_prerequisites: [],
-        reason: `Admin: ${stats.total_students} estudiantes, ${stats.active_tracks} tracks activos`,
-      });
+      try {
+        const stats = await api.get<AdminStats>('/admin/dashboard-stats', token);
+        setAdminStats(stats);
+      }
+      catch {
+        setAdminStats(null);
+      }
     }
     else {
       setIsStudent(true);
@@ -106,7 +106,6 @@ export function DashboardPage() {
           progress_percentage: 40,
           status: 'on_track',
         });
-
         setEligibility({
           is_eligible: false,
           eligibility_type: 'automatic',
@@ -161,16 +160,59 @@ export function DashboardPage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'completed':
-        return 'success';
-      case 'on_track':
-        return 'primary';
-      case 'at_risk':
-        return 'warning';
-      default:
-        return 'default';
+      case 'completed': return 'success';
+      case 'on_track': return 'primary';
+      case 'at_risk': return 'warning';
+      default: return 'default';
     }
   };
+
+  if (!isStudent) {
+    const statCards = [
+      { label: 'admin.stats.total_students', value: adminStats?.total_students ?? '-', icon: PeopleIcon, color: 'primary' as const },
+      { label: 'admin.stats.active_students', value: adminStats?.active_students ?? '-', icon: SchoolIcon, color: 'success' as const },
+      { label: 'admin.stats.active_tracks', value: adminStats?.active_tracks ?? '-', icon: AssignmentIcon, color: 'info' as const },
+      { label: 'admin.stats.certificates_issued', value: adminStats?.total_certificates ?? '-', icon: DiplomaIcon, color: 'secondary' as const },
+      { label: 'admin.stats.eligible', value: adminStats?.eligible_count ?? '-', icon: CheckCircleIcon, color: 'success' as const },
+      { label: 'admin.stats.not_eligible', value: adminStats?.not_eligible_count ?? '-', icon: CheckCircleIcon, color: 'error' as const },
+      { label: 'admin.stats.completion_rate', value: adminStats ? `${adminStats.completion_rate}%` : '-', icon: TrendingUpIcon, color: 'info' as const },
+    ];
+
+    return (
+      <Box>
+        <Typography variant="h4" gutterBottom>
+          {`${t('dashboard.welcome')}, ${localStorage.getItem('userName') || t('dashboard.user_fallback')}`}
+        </Typography>
+        <Grid container spacing={3}>
+          {statCards.map((stat) => {
+            const Icon = stat.icon;
+            return (
+              <Grid size={{ xs: 12, sm: 6, md: 4 }} key={stat.label}>
+                <Card>
+                  <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <Icon color={stat.color} sx={{ fontSize: 40 }} />
+                    <Box>
+                      <Typography variant="h4">{stat.value}</Typography>
+                      <Typography variant="body2" color="text.secondary">{t(stat.label)}</Typography>
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
+            );
+          })}
+          {adminStats && adminStats.recent_sync_errors > 0 && (
+            <Grid size={{ xs: 12 }}>
+              <Alert severity="warning" icon={<SyncErrorIcon />}>
+                {adminStats.recent_sync_errors}
+                {' '}
+                sync errors in last 7 days
+              </Alert>
+            </Grid>
+          )}
+        </Grid>
+      </Box>
+    );
+  }
 
   return (
     <Box>
@@ -179,7 +221,6 @@ export function DashboardPage() {
       </Typography>
 
       <Grid container spacing={3}>
-        {/* Progress Card */}
         <Grid size={{ xs: 12, md: 8 }}>
           <Card>
             <CardContent>
@@ -213,18 +254,14 @@ export function DashboardPage() {
                   <Box sx={{ textAlign: 'center' }}>
                     <SchoolIcon color="primary" sx={{ fontSize: 40 }} />
                     <Typography variant="h5">{progress?.credits_accumulated}</Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {t('dashboard.credits_accumulated')}
-                    </Typography>
+                    <Typography variant="body2" color="text.secondary">{t('dashboard.credits_accumulated')}</Typography>
                   </Box>
                 </Grid>
                 <Grid size={{ xs: 6, md: 4 }}>
                   <Box sx={{ textAlign: 'center' }}>
                     <TrendingUpIcon color="primary" sx={{ fontSize: 40 }} />
                     <Typography variant="h5">{progress?.credits_required}</Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {t('dashboard.credits_required')}
-                    </Typography>
+                    <Typography variant="body2" color="text.secondary">{t('dashboard.credits_required')}</Typography>
                   </Box>
                 </Grid>
                 <Grid size={{ xs: 6, md: 4 }}>
@@ -235,9 +272,7 @@ export function DashboardPage() {
                       color={getStatusColor(progress?.status || '')}
                       sx={{ mt: 1 }}
                     />
-                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                      {t('dashboard.status')}
-                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>{t('dashboard.status')}</Typography>
                   </Box>
                 </Grid>
               </Grid>
@@ -245,7 +280,6 @@ export function DashboardPage() {
           </Card>
         </Grid>
 
-        {/* Eligibility Card */}
         <Grid size={{ xs: 12, md: 4 }}>
           <Card
             sx={{
@@ -254,17 +288,13 @@ export function DashboardPage() {
             }}
           >
             <CardContent>
-              <Typography variant="h6" gutterBottom>
-                {t('dashboard.exam_date')}
-              </Typography>
-
+              <Typography variant="h6" gutterBottom>{t('dashboard.exam_date')}</Typography>
               <Chip
                 label={eligibility?.is_eligible ? t('dashboard.eligible') : t('dashboard.not_eligible')}
                 color={eligibility?.is_eligible ? 'success' : 'error'}
                 sx={{ mb: 2 }}
               />
-
-              {eligibility?.is_eligible && isStudent
+              {eligibility?.is_eligible
                 ? (
                     <Box>
                       <Button
@@ -278,37 +308,28 @@ export function DashboardPage() {
                         {registering ? <CircularProgress size={20} color="inherit" /> : t('dashboard.register_exam')}
                       </Button>
                       {registrationMessage && (
-                        <Alert severity={registrationMessage.type} sx={{ mt: 1 }}>
-                          {registrationMessage.text}
-                        </Alert>
+                        <Alert severity={registrationMessage.type} sx={{ mt: 1 }}>{registrationMessage.text}</Alert>
                       )}
                     </Box>
                   )
-                : eligibility?.is_eligible && !isStudent
-                  ? null
-                  : (
-                      <Alert severity="warning">
-                        {t('dashboard.missing_prerequisites')}
-                        :
-                        {eligibility?.missing_prerequisites.length}
-                        {' '}
-                        {t('dashboard.courses')}
-                      </Alert>
-                    )}
+                : (
+                    <Alert severity="warning">
+                      {t('dashboard.missing_prerequisites')}
+                      :
+                      {eligibility?.missing_prerequisites.length}
+                      {' '}
+                      {t('dashboard.courses')}
+                    </Alert>
+                  )}
             </CardContent>
           </Card>
         </Grid>
 
-        {/* Next Steps Card */}
         <Grid size={{ xs: 12 }}>
           <Card>
             <CardContent>
-              <Typography variant="h6" gutterBottom>
-                {t('dashboard.next_steps')}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                {t('dashboard.next_steps_description')}
-              </Typography>
+              <Typography variant="h6" gutterBottom>{t('dashboard.next_steps')}</Typography>
+              <Typography variant="body2" color="text.secondary">{t('dashboard.next_steps_description')}</Typography>
             </CardContent>
           </Card>
         </Grid>

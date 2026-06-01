@@ -12,9 +12,6 @@ jobs:
     name: UX Smoke — Routing, Identity, Roles, Sync
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    defaults:
-      run:
-        working-directory: client
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -25,19 +22,21 @@ jobs:
           bun-version: latest
 
       - name: Install client dependencies
+        working-directory: client
         run: bun install
 
       - name: Cache Playwright browsers
         uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          key: playwright-${{ runner.os }}-${{ hashFiles('client/bun.lock') }}
 
       - name: Install Playwright Chromium only
+        working-directory: client
         run: bunx playwright install chromium --with-deps
 
       - name: Run UX smoke tests
-        run: bunx playwright test --config=playwright.config.ts ux-smoke.spec.ts
+        run: bunx --bun playwright test --config=client/playwright.config.ts ux-smoke.spec.ts
         env:
           CI: 'true'
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}

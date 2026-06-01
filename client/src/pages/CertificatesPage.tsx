@@ -19,6 +19,8 @@ import { api } from '../lib/api';
 interface Certificate {
   id: string
   course_name: string
+  student_name?: string
+  student_email?: string
   issue_date: string
   status: 'approved' | 'pending' | 'rejected'
   qualification: number | null
@@ -28,18 +30,31 @@ export function CertificatesPage() {
   const { t } = useTranslation();
   const [certificates, setCertificates] = useState<Certificate[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isStaff, setIsStaff] = useState(false);
 
   useEffect(() => {
     const fetchCertificates = async () => {
       const userId = localStorage.getItem('userId') || '';
       const token = localStorage.getItem('token') || '';
-      try {
-        const data = await api.get<Certificate[]>(`/students/${userId}/certificates`, token);
-        setCertificates(data);
+
+      const tokenPayload = token.split('.')[1];
+      const claims = JSON.parse(atob(tokenPayload)) as { role: string };
+
+      if (claims.role === 'admin' || claims.role === 'coordinador' || claims.role === 'sysadmin') {
+        setIsStaff(true);
+        setCertificates([]);
       }
-      finally {
-        setLoading(false);
+      else {
+        setIsStaff(false);
+        try {
+          const data = await api.get<Certificate[]>(`/students/${userId}/certificates`, token);
+          setCertificates(data);
+        }
+        catch {
+          setCertificates([]);
+        }
       }
+      setLoading(false);
     };
 
     void fetchCertificates();
@@ -47,16 +62,33 @@ export function CertificatesPage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'approved':
-        return 'success';
-      case 'pending':
-        return 'warning';
-      case 'rejected':
-        return 'error';
-      default:
-        return 'default';
+      case 'approved': return 'success';
+      case 'pending': return 'warning';
+      case 'rejected': return 'error';
+      default: return 'default';
     }
   };
+
+  if (isStaff) {
+    return (
+      <Box>
+        <Typography variant="h4" gutterBottom>{t('nav.certificates')}</Typography>
+        <Card>
+          <CardContent>
+            <Box sx={{ textAlign: 'center', p: 4 }}>
+              <Typography variant="h6" color="text.secondary" gutterBottom>
+                System Certificate Management
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                As an administrator, you can view and manage all student certificates.
+                Navigate to the Admin Panel or SysAdmin Panel to search for specific students and their certificates.
+              </Typography>
+            </Box>
+          </CardContent>
+        </Card>
+      </Box>
+    );
+  }
 
   return (
     <Box>
