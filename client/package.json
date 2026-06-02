@@ -7,6 +7,8 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "test:e2e": "playwright test",
+    "test:e2e:prod": "playwright test --config=playwright.prod.config.ts",
+    "validate:prod": "playwright test --config=playwright.prod.config.ts --grep @prod",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

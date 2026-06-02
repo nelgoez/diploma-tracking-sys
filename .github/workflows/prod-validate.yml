@@ -1,0 +1,55 @@
+name: Prod Validate — Post-Deploy Smoke
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  prod-validate:
+    name: Production Validation — @prod Smoke Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install client dependencies
+        working-directory: client
+        run: bun install
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('client/bun.lock') }}
+
+      - name: Install Playwright Chromium
+        working-directory: client
+        run: bun playwright install chromium --with-deps
+
+      - name: Run @prod validation tests
+        working-directory: client
+        env:
+          CI: 'true'
+          PROD_BASE_URL: 'https://nelgoez-diploma-tracking-sys.vercel.app'
+          PROD_ADMIN_EMAIL: 'admin@dts.unc.edu.ar'
+          PROD_ADMIN_PASSWORD: 'Admin123456!'
+          PROD_STUDENT_EMAIL: 'nahuelgomez.cti@gmail.com'
+          PROD_STUDENT_PASSWORD: 'Test123456!'
+        run: bun validate:prod
+
+      - name: Upload test report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: prod-validate-report
+          path: |
+            client/playwright-report/
+            client/test-results/
+          retention-days: 7

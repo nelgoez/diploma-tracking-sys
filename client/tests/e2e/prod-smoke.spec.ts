@@ -49,7 +49,7 @@ function scrollToBottom(page: Page) {
   return page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
 }
 
-test.describe('Production Smoke — Admin Dashboard', () => {
+test.describe('@prod Production Smoke — Admin Dashboard', () => {
   test('admin dashboard shows real stats with numeric values', async ({ page }) => {
     await skipIfUnreachable(page);
 
@@ -118,7 +118,7 @@ test.describe('Production Smoke — Admin Dashboard', () => {
   });
 });
 
-test.describe('Production Smoke — Integrations', () => {
+test.describe('@prod Production Smoke — Integrations', () => {
   test('integrations page shows status labels (not undefined)', async ({ page }) => {
     await skipIfUnreachable(page);
 
@@ -151,7 +151,7 @@ test.describe('Production Smoke — Integrations', () => {
   });
 });
 
-test.describe('Production Smoke — Student Views', () => {
+test.describe('@prod Production Smoke — Student Views', () => {
   test('certificates page loads for student', async ({ page }) => {
     await skipIfUnreachable(page);
 
@@ -196,7 +196,7 @@ test.describe('Production Smoke — Student Views', () => {
   });
 });
 
-test.describe('Production Smoke — Role-Based Navigation', () => {
+test.describe('@prod Production Smoke — Role-Based Navigation', () => {
   test('student sees no admin nav, admin sees admin nav', async ({ page }) => {
     await skipIfUnreachable(page);
 
@@ -238,7 +238,7 @@ test.describe('Production Smoke — Role-Based Navigation', () => {
   });
 });
 
-test.describe('Production Smoke — No Console Errors', () => {
+test.describe('@prod Production Smoke — No Console Errors', () => {
   test('no unexpected console errors after touring pages as admin', async ({ page }) => {
     await skipIfUnreachable(page);
 
