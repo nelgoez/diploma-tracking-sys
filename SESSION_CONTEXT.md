@@ -2,7 +2,8 @@
 
 > **Purpose:** Context file for resuming AI sessions
 > **Created:** 2026-04-27
-> **Status:** Phases 1-3 Complete, Ready for Phase 4+
+> **Last Updated:** 2026-06-02
+> **Status:** Phase 1-5 Complete, Phase 6 Notifications + Dashboard Implemented
 
 ---
 
@@ -355,5 +356,93 @@ Fase 14: Shift-Right Testing
 
 ---
 
-**Last Updated:** 2026-05-19
-**Version:** 0.6.0 (Full standards audit: lint/tsc/i18n/mcp fixes)
+## Session Log — 2026-06-02: Phase 5 Closure + Phase 6 Implementation
+
+### Context
+
+Sibling meta-repo (`agentic-diplo-track-sys`) used for orchestration. Actual code in this repo.
+Phase 5 was 6.5/7 complete — DTS-SYNC-2 (individual certificate re-sync) was missing,
+and `certificates.ts:59` had a stale TODO placeholder not calling `moodleService.syncCertificates()`.
+Phase 6 (notifications, override scheduler, Guaraní sync, coordinator dashboard) was 0/6.
+
+### Completed Work
+
+#### Security
+
+- ✅ Enabled RLS on `audit_log` table (was disabled — Supabase critical advisory)
+- ✅ Blocked client access via `authenticated`/`anon` roles. Only `service_role` (backend) bypasses.
+
+#### Migration 007
+
+- ✅ Created `notifications` table: id UUID PK, student_id FK, type CHECK (6 types), title, body, entity_type, entity_id, read, created_at, expires_at (90d retention)
+- ✅ Created `institutions` table: id, name, code UNIQUE, country, is_active, moodle_url, moodle_token_encrypted, guarani_url, guarani_token_encrypted
+- ✅ Added `institution_id` FK to students, tracks. Backfilled UNC as default.
+- ✅ RLS policies: client-blocked, service_role bypass.
+
+#### Phase 5: DTS-SYNC-2 — Certificate Re-sync
+
+- ✅ Fixed `certificates.ts` POST /sync: now calls `moodleService.syncCertificates()` (was TODO placeholder)
+- ✅ Added POST /certificates/:id/resync: fetches fresh certs from Moodle, matches by course_id or externalId, UPSERTs. If cert not found in Moodle → marks status='error'.
+
+#### Phase 6: DTS-NOTIF-3 — Notification Infrastructure
+
+- ✅ `services/notification.service.ts`: createNotification, createNotificationsBatch, upsertEligibilityNotification (deduplicates unread), getNotifications (paginated, unread-first, type filter), markAsRead, getUnreadCount, consolidateCertNotifications (batch → 1 notification)
+- ✅ `routes/notifications.ts`: GET / (paginated, unread first), GET /unread-count, PUT /:id/read
+- ✅ Mounted at `/api/v1/notifications`
+
+#### Phase 6: DTS-NOTIF-1 + NOTIF-2 — Notification Triggers
+
+- ✅ Added `StudentCertDetail` to `SyncCertificatesResult` (moodle.service.ts): per-student new cert tracking with course names
+- ✅ DTS-NOTIF-2: After Moodle sync, creates consolidated notifications for new certificates per student (1 notif per student even if 3+ new certs)
+- ✅ DTS-NOTIF-1: During eligibility re-evaluation post-sync, compares previous eligibility state (from integration_logs) → creates notification on change (eligible↔not-eligible)
+
+#### Phase 6: DTS-OVERRIDE-1 — Override Expiry Scheduler
+
+- ✅ `services/override-scheduler.ts`: expireOverrides() — queries active overrides where expires_at < NOW(), batch 100, updates status='expired', re-evaluates eligibility, creates notifications if eligibility lost, logs audit_log
+- ✅ `cron/expire-overrides.ts`: standalone Bun script entry point with summary output
+- ✅ GitHub Actions workflow: `.github/workflows/cron-expire-overrides.yml` — daily at 3AM UTC + manual dispatch
+
+#### Phase 6: DTS-EXTRAS-1 — Coordinator Dashboard
+
+- ✅ `routes/coordinator.ts`: GET /dashboard (track summary: enrolled, eligible, not_eligible, pending_grades per track), GET /students (paginated, searchable, filterable by eligibility), POST /bulk-grade (Zod-validated bulk exam grade input with audit_log)
+- ✅ Mounted at `/api/v1/coordinator`
+
+#### DTS-INT-5 — Guarani Student Sync
+
+- ✅ Already fully implemented: `guarani.service.ts` has real API calls with retry (withRetry from resilient-adapter), `syncStudents()` with UPSERT by email/DNI, `pushDiploma()`, `healthCheck()`. Endpoint `POST /integrations/sync/guarani` exists. Only needs `GUARANI_TOKEN` configured.
+
+### Files Changed
+
+| File                                          | Type     | Purpose                                        |
+| --------------------------------------------- | -------- | ---------------------------------------------- |
+| `supabase/migrations/007_notifications.sql`   | New      | Notifications + institutions tables, RLS fix   |
+| `server/src/services/notification.service.ts` | New      | Notification CRUD + dedup + consolidation      |
+| `server/src/services/override-scheduler.ts`   | New      | Override expiry + eligibility re-eval + notify |
+| `server/src/routes/notifications.ts`          | New      | Notification API endpoints                     |
+| `server/src/routes/coordinator.ts`            | New      | Coordinator dashboard + bulk grade             |
+| `server/src/cron/expire-overrides.ts`         | New      | Cron entry point                               |
+| `.github/workflows/cron-expire-overrides.yml` | New      | GitHub Actions daily job                       |
+| `server/src/routes/certificates.ts`           | Modified | Fixed POST /sync, added /:id/resync            |
+| `server/src/routes/integrations.ts`           | Modified | Notification triggers for N1 + N2              |
+| `server/src/services/moodle.service.ts`       | Modified | Added StudentCertDetail to result              |
+| `server/src/index.ts`                         | Modified | Mounted notifications + coordinator routes     |
+
+### Verification
+
+- ✅ `tsc --noEmit`: clean (0 errors)
+- ✅ ESLint: 0 errors in new/modified files
+- ✅ Supabase security advisors: audit_log RLS resolved, no critical advisories
+- ✅ Notifications + institutions tables exist in Supabase
+
+### Next Steps
+
+- Configure `GUARANI_TOKEN` in `.env` for live Guarani sync
+- Configure `MOODLE_API_TOKEN` with admin-scoped token for multi-user certificate fetch
+- Run `bun run db:types` to regenerate database.types.ts with notifications + institutions
+- Configure GitHub Secrets for cron workflow (SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, JWT_SECRET)
+- Post-MVP: email notifications via Resend, Canvas LMS provider, digital diploma PDF
+
+---
+
+**Last Updated:** 2026-06-02
+**Version:** 0.7.0 (Phase 5 closed + Phase 6 implemented)
