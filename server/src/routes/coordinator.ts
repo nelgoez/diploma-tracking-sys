@@ -1,0 +1,267 @@
+import type { HonoVariables } from '../types/hono';
+import { zValidator } from '@hono/zod-validator';
+import { Hono } from 'hono';
+import { z } from 'zod';
+import { supabaseAdmin as supabase } from '../db/supabase';
+import { authenticate, requireRole } from '../middleware/auth';
+import { createEligibilityDataAccess } from '../services/eligibility-data-access';
+import { evaluateTrackEligibility } from '../services/rule-engine';
+
+const coordinator = new Hono<{ Variables: HonoVariables }>();
+
+coordinator.use('/*', authenticate);
+coordinator.use('/*', requireRole('coordinador', 'admin', 'sysadmin'));
+
+coordinator.get('/dashboard', async (c) => {
+  const auth = c.get('auth');
+
+  const { data: coordTracks } = await supabase
+    .from('track_coordinators' as never)
+    .select('track_id')
+    .eq('user_id', auth.userId) as never;
+
+  const rows = coordTracks as unknown as Array<{ track_id: string }> | null;
+  const managedTrackIds = (rows || []).map(t => t.track_id);
+
+  const trackQuery = managedTrackIds.length > 0
+    ? supabase.from('tracks').select('*').in('id', managedTrackIds).eq('is_active', true)
+    : supabase.from('tracks').select('*').eq('is_active', true);
+
+  const { data: tracks } = await trackQuery;
+
+  if (!tracks || tracks.length === 0) {
+    return c.json({ tracks: [] });
+  }
+
+  const dataAccess = createEligibilityDataAccess();
+  const trackSummaries = [];
+
+  for (const track of tracks) {
+    const { count: totalEnrolled } = await supabase
+      .from('enrollments')
+      .select('*', { count: 'exact', head: true })
+      .eq('track_id', track.id)
+      .eq('status', 'active');
+
+    const { data: enrollments } = await supabase
+      .from('enrollments')
+      .select('student_id')
+      .eq('track_id', track.id)
+      .eq('status', 'active');
+
+    let eligibleCount = 0;
+    let notEligibleCount = 0;
+
+    for (const enrollment of (enrollments || [])) {
+      try {
+        const eligibility = await evaluateTrackEligibility({
+          studentId: enrollment.student_id,
+          trackId: track.id,
+          ...dataAccess,
+        });
+        if (eligibility.eligible) {
+          eligibleCount++;
+        }
+        else {
+          notEligibleCount++;
+        }
+      }
+      catch {
+        notEligibleCount++;
+      }
+    }
+
+    const { count: pendingGrades } = await supabase
+      .from('enrollments')
+      .select('*', { count: 'exact', head: true })
+      .eq('track_id', track.id)
+      .eq('exam_status', 'inscripto');
+
+    trackSummaries.push({
+      track_id: track.id,
+      track_name: track.name,
+      track_code: track.code,
+      total_enrolled: totalEnrolled || 0,
+      eligible: eligibleCount,
+      not_eligible: notEligibleCount,
+      pending_grades: pendingGrades || 0,
+    });
+  }
+
+  return c.json({ tracks: trackSummaries });
+});
+
+coordinator.get('/students', async (c) => {
+  const trackId = c.req.query('track_id');
+  const search = c.req.query('search');
+  const eligibility = c.req.query('eligibility');
+  const page = Number.parseInt(c.req.query('page') || '1');
+  const limit = Number.parseInt(c.req.query('limit') || '20');
+  const offset = (page - 1) * limit;
+
+  if (!trackId) {
+    return c.json({ error: 'track_id is required' }, 400);
+  }
+
+  let enrollmentQuery = supabase
+    .from('enrollments')
+    .select(`
+      student_id,
+      exam_status,
+      exam_date,
+      exam_grade,
+      students!inner(id, name, email, dni)
+    `, { count: 'exact' })
+    .eq('track_id', trackId)
+    .eq('status', 'active');
+
+  if (search) {
+    enrollmentQuery = enrollmentQuery.or(
+      `students.name.ilike.%${search}%,students.email.ilike.%${search}%,students.dni.ilike.%${search}%`,
+      { referencedTable: 'students' },
+    );
+  }
+
+  const { data: enrollments, error, count } = await enrollmentQuery
+    .order('exam_status', { ascending: true })
+    .range(offset, offset + limit - 1);
+
+  if (error) {
+    return c.json({ error: 'Failed to fetch students' }, 500);
+  }
+
+  const dataAccess = createEligibilityDataAccess();
+  const students = [];
+
+  for (const enrollment of (enrollments || [])) {
+    const row = enrollment as unknown as Record<string, unknown>;
+    const studentData = (row.students as Record<string, unknown>) || {};
+
+    let isEligible: boolean | null = null;
+
+    try {
+      const eligibilityResult = await evaluateTrackEligibility({
+        studentId: row.student_id as string,
+        trackId,
+        ...dataAccess,
+      });
+      isEligible = eligibilityResult.eligible;
+    }
+    catch {
+      isEligible = null;
+    }
+
+    if (eligibility && eligibility !== 'all' && eligibility !== String(isEligible)) {
+      continue;
+    }
+
+    students.push({
+      student_id: row.student_id,
+      name: studentData.name,
+      email: studentData.email,
+      dni: studentData.dni,
+      exam_status: row.exam_status,
+      exam_date: row.exam_date,
+      exam_grade: row.exam_grade,
+      eligible: isEligible,
+    });
+  }
+
+  return c.json({
+    data: students,
+    pagination: {
+      page,
+      limit,
+      total: count || 0,
+    },
+  });
+});
+
+const bulkGradeSchema = z.object({
+  exam_date: z.string(),
+  grades: z.array(z.object({
+    enrollment_id: z.string().uuid(),
+    grade: z.number().int().min(1).max(10),
+  })),
+});
+
+coordinator.post('/bulk-grade', zValidator('json', bulkGradeSchema), async (c) => {
+  const body = c.req.valid('json');
+  const auth = c.get('auth');
+  const now = new Date().toISOString();
+  const results: Array<{ enrollment_id: string, success: boolean, error?: string }> = [];
+
+  for (const entry of body.grades) {
+    try {
+      const { data: enrollment, error: fetchErr } = await supabase
+        .from('enrollments')
+        .select('id, exam_status, student_id, track_id')
+        .eq('id', entry.enrollment_id)
+        .single();
+
+      if (fetchErr || !enrollment) {
+        results.push({ enrollment_id: entry.enrollment_id, success: false, error: 'Enrollment not found' });
+        continue;
+      }
+
+      if (enrollment.exam_status !== 'inscripto') {
+        results.push({
+          enrollment_id: entry.enrollment_id,
+          success: false,
+          error: `Expected exam_status=inscripto, got ${enrollment.exam_status}`,
+        });
+        continue;
+      }
+
+      const newStatus = entry.grade >= 4 ? 'aprobado' : 'desaprobado';
+
+      const { error: updateErr } = await supabase
+        .from('enrollments')
+        .update({
+          exam_grade: entry.grade,
+          exam_status: newStatus,
+          updated_at: now,
+        } as unknown as Record<string, unknown> as never)
+        .eq('id', entry.enrollment_id);
+
+      if (updateErr) {
+        results.push({ enrollment_id: entry.enrollment_id, success: false, error: updateErr.message });
+        continue;
+      }
+
+      await supabase.from('audit_log').insert({
+        user_id: auth.userId,
+        action: 'grade_recorded',
+        entity_type: 'enrollments',
+        entity_id: entry.enrollment_id,
+        details: {
+          grade: entry.grade,
+          result: newStatus,
+          graded_by: auth.userId,
+          bulk_grading: true,
+          exam_date: body.exam_date,
+        },
+        created_at: now,
+      } as any);
+
+      results.push({ enrollment_id: entry.enrollment_id, success: true });
+    }
+    catch (err) {
+      results.push({
+        enrollment_id: entry.enrollment_id,
+        success: false,
+        error: err instanceof Error ? err.message : 'Unknown error',
+      });
+    }
+  }
+
+  const succeeded = results.filter(r => r.success).length;
+  const failed = results.filter(r => !r.success).length;
+
+  return c.json({
+    summary: { total: results.length, succeeded, failed },
+    results,
+  });
+});
+
+export { coordinator as coordinatorRoutes };
