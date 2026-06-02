@@ -17,6 +17,11 @@ This guide helps agents work effectively on the Diploma Tracking System, which t
 - Lint: `bun run lint`
 - Format: `bun run format`
 - Sync OpenAPI: `bun run api:sync`
+- **Validate production**: `cd client && bun validate:prod --project=chromium --headed`
+  - Runs 7 @prod smoke tests against live deployment
+  - `--headed` shows browser window (omit for headless CI)
+  - Requires Vercel Deployment Protection disabled OR `VERCEL_AUTOMATION_BYPASS_SECRET` env var
+  - See `.github/workflows/prod-validate.yml` for CI version
 
 ## Project Structure (Adapted for Diploma Tracking)
 

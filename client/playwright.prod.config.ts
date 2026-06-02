@@ -1,6 +1,8 @@
 import { defineConfig } from '@playwright/test';
 
 const IS_CI = !!process.env.CI;
+const VERCEl_BYPASS = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+const VERCEl_SHARE = process.env.VERCEL_SHARE_TOKEN;
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -18,6 +20,12 @@ export default defineConfig({
     headless: IS_CI,
     video: IS_CI ? 'on' : 'off',
     trace: 'off',
+    ...(VERCEl_BYPASS && {
+      extraHTTPHeaders: { 'x-vercel-protection-bypass': VERCEl_BYPASS },
+    }),
+    ...(VERCEl_SHARE && !VERCEl_BYPASS && {
+      extraHTTPHeaders: {},
+    }),
   },
   projects: [
     {

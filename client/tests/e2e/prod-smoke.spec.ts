@@ -1,13 +1,9 @@
 import { expect, Page, test } from '@playwright/test';
 
 const PROD_URL = 'https://nelgoez-diploma-tracking-sys.vercel.app';
-const VERCEL_SHARE = process.env.VERCEL_SHARE_TOKEN
-  ? `_vercel_share=${process.env.VERCEL_SHARE_TOKEN}`
-  : '';
 
 function prodUrl(path: string) {
-  const sep = path.includes('?') ? '&' : '?';
-  return VERCEL_SHARE ? `${PROD_URL}${path}${sep}${VERCEL_SHARE}` : `${PROD_URL}${path}`;
+  return `${PROD_URL}${path}`;
 }
 
 const ADMIN_EMAIL = process.env.PROD_ADMIN_EMAIL || 'admin@dts.unc.edu.ar';
