@@ -4,13 +4,17 @@ import type {
 } from '../providers/academic.provider';
 import type { ProviderHealth } from '../providers/certificate.provider';
 import { supabaseAdmin } from '../db/supabase';
+import { logPerStudent } from './integration-logs';
+import { withRetry } from './resilient-adapter';
 
-export interface GuaraniStudent {
-  id: string
-  nombre: string
-  email: string
-  dni: string
-  carrera: string
+const GUARANI_URL = process.env.GUARANI_URL || 'https://guarani.unc.edu.ar/api';
+const GUARANI_TOKEN = process.env.GUARANI_TOKEN || '';
+
+export interface SyncResult {
+  studentsProcessed: number
+  studentsNew: number
+  studentsUpdated: number
+  errors: Array<{ studentId: string; error: string }>
 }
 
 export interface DiplomaPushResult {
@@ -22,167 +26,200 @@ export interface DiplomaPushResult {
   guaraniReference: string
 }
 
-export interface GuaraniService {
-  syncStudents: () => Promise<GuaraniStudent[]>
-  syncAcademicStatus: (studentId: string) => Promise<unknown>
-  pushDiploma: (
-    studentId: string,
-    diplomaData: {
-      trackId: string
-      grade: number
-      courseName: string
-    },
-  ) => Promise<DiplomaPushResult>
+interface GuaraniApiStudent {
+  id: string
+  nombre?: string
+  apellido?: string
+  nombre_completo?: string
+  email?: string
+  dni?: string
+  documento?: string
+  legajo?: string
+  carrera?: string
 }
 
-const MOCK_STUDENT_POOL: Array<{
-  firstName: string
-  lastName: string
-  dni: string
-}> = [
-  { firstName: 'María Laura', lastName: 'Fernández', dni: '28456789' },
-  { firstName: 'Carlos Alberto', lastName: 'Rodríguez', dni: '31234567' },
-  { firstName: 'Ana Belén', lastName: 'Martínez', dni: '35678901' },
-  { firstName: 'Juan Pablo', lastName: 'González', dni: '27456123' },
-  { firstName: 'Lucía Victoria', lastName: 'Sánchez', dni: '39876543' },
-  { firstName: 'Federico Andrés', lastName: 'López', dni: '33456987' },
-  { firstName: 'Valentina Sofía', lastName: 'Díaz', dni: '40789123' },
-  { firstName: 'Martín Nicolás', lastName: 'Pérez', dni: '29876541' },
-  { firstName: 'Camila Andrea', lastName: 'Romero', dni: '38123456' },
-  { firstName: 'Santiago Javier', lastName: 'Torres', dni: '31567890' },
-];
+function isConfigured(): boolean {
+  return Boolean(GUARANI_TOKEN);
+}
 
-class GuaraniServiceImpl implements GuaraniService, AcademicProvider {
-  readonly providerName = 'guarani';
-  private apiUrl: string;
-  private apiToken: string;
-
-  constructor() {
-    this.apiUrl = process.env.GUARANI_API_URL || 'https://guarani.unc.edu.ar';
-    this.apiToken = process.env.GUARANI_API_TOKEN || 'placeholder-token';
+async function guaraniFetch<T>(endpoint: string): Promise<T> {
+  if (!isConfigured()) {
+    throw new Error('GUARANI_TOKEN not configured');
   }
 
+  return withRetry(async () => {
+    const response = await fetch(`${GUARANI_URL}${endpoint}`, {
+      headers: {
+        'Authorization': `Bearer ${GUARANI_TOKEN}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      signal: AbortSignal.timeout(10000),
+    });
+
+    if (!response.ok) {
+      const err = new Error(`Guaraní HTTPS ${response.status}`) as Error & { statusCode: number };
+      err.statusCode = response.status;
+      throw err;
+    }
+
+    return response.json() as Promise<T>;
+  });
+}
+
+function mapToAcademicStudent(api: GuaraniApiStudent, index: number): AcademicStudent {
+  const firstName = api.nombre || api.nombre_completo?.split(' ')[0] || '';
+  const lastName = api.apellido || api.nombre_completo?.split(' ').slice(1).join(' ') || '';
+  const email = api.email || `${firstName.toLowerCase()}.${lastName.toLowerCase()}@mi.unc.edu.ar`;
+  const documentNumber = api.dni || api.documento || '';
+
+  return {
+    id: api.legajo || api.id || `guarani-${index}`,
+    firstName,
+    lastName,
+    email,
+    documentNumber,
+  };
+}
+
+class GuaraniServiceImpl implements AcademicProvider {
+  readonly providerName = 'guarani';
+
   async fetchStudents(): Promise<AcademicStudent[]> {
-    return MOCK_STUDENT_POOL.map(m => ({
-      id: `guarani-${m.dni}`,
-      firstName: m.firstName,
-      lastName: m.lastName,
-      email: `${m.firstName.toLowerCase().replace(/\s+/g, '.')}.${m.lastName.toLowerCase()}@mi.unc.edu.ar`,
-      documentNumber: m.dni,
-    }));
+    if (!isConfigured()) {
+      console.warn('[GuaraniService] GUARANI_TOKEN not configured — returning empty list');
+      return [];
+    }
+
+    try {
+      const response = await guaraniFetch<{ data: GuaraniApiStudent[] } | GuaraniApiStudent[]>('/estudiantes');
+      const raw = Array.isArray(response) ? response : (response as { data: GuaraniApiStudent[] }).data ?? [];
+      return raw.map(mapToAcademicStudent);
+    } catch (err) {
+      console.error('[GuaraniService] fetchStudents failed:', (err as Error).message);
+      return [];
+    }
   }
 
   async fetchStudent(id: string): Promise<AcademicStudent | null> {
-    const mock = MOCK_STUDENT_POOL.find(
-      m => `guarani-${m.dni}` === id,
-    );
-    if (!mock) { return null; }
+    if (!isConfigured()) {
+      return null;
+    }
 
-    return {
-      id,
-      firstName: mock.firstName,
-      lastName: mock.lastName,
-      email: `${mock.firstName.toLowerCase().replace(/\s+/g, '.')}.${mock.lastName.toLowerCase()}@mi.unc.edu.ar`,
-      documentNumber: mock.dni,
-    };
+    try {
+      const student = await guaraniFetch<GuaraniApiStudent>(`/estudiantes/${id}`);
+      return mapToAcademicStudent(student, 0);
+    } catch (err) {
+      console.error(`[GuaraniService] fetchStudent(${id}) failed:`, (err as Error).message);
+      return null;
+    }
   }
 
   async healthCheck(): Promise<ProviderHealth> {
     const startedAt = Date.now();
 
-    const dbOk = await supabaseAdmin
-      .from('students')
-      .select('id', { count: 'exact', head: true })
-      .limit(1);
-
-    if (dbOk.error) {
+    if (!isConfigured()) {
       return {
-        status: 'error',
-        latencyMs: Date.now() - startedAt,
-        message: `DB unreachable: ${dbOk.error.message}`,
-        lastChecked: new Date().toISOString(),
-      };
-    }
-
-    if (process.env.MOCK_MODE === 'true') {
-      return {
-        status: 'connected',
-        latencyMs: Date.now() - startedAt,
-        message: 'SIU Guaraní (mock mode — demo)',
+        status: 'disconnected',
+        latencyMs: 0,
+        message: 'GUARANI_TOKEN not configured',
         lastChecked: new Date().toISOString(),
       };
     }
 
     try {
-      const response = await fetch(`${this.apiUrl}/api/health`, {
-        signal: AbortSignal.timeout(10000),
-      });
-
+      await guaraniFetch('/health');
       return {
-        status: response.ok ? 'connected' : 'degraded',
+        status: 'connected',
         latencyMs: Date.now() - startedAt,
-        message: response.ok
-          ? undefined
-          : `External HTTP ${response.status} — using mock data`,
         lastChecked: new Date().toISOString(),
       };
-    }
-    catch (err) {
+    } catch (err) {
       return {
-        status: 'degraded',
+        status: 'error',
         latencyMs: Date.now() - startedAt,
-        message: `Guaraní API unreachable — using mock data (${err instanceof Error ? err.message : 'Unknown error'})`,
+        message: (err as Error).message,
         lastChecked: new Date().toISOString(),
       };
     }
   }
 
-  async syncStudents(): Promise<GuaraniStudent[]> {
-    const allApiStudents = await this.fetchStudents();
-
-    const rows = allApiStudents.map(s => ({
-      name: `${s.firstName} ${s.lastName}`,
-      email: s.email,
-      dni: s.documentNumber,
-      guarani_id: s.id,
-      role: 'estudiante' as const,
-      is_active: true,
-    }));
-
-    const { error } = await supabaseAdmin
-      .from('students')
-      .upsert(rows, {
-        onConflict: 'email',
-        ignoreDuplicates: false,
-      });
-
-    if (error) {
-      console.error('[GuaraniService] Failed to upsert students:', error.message);
+  async syncStudents(): Promise<SyncResult> {
+    if (!isConfigured()) {
+      console.warn('[GuaraniService] GUARANI_TOKEN not configured — skipping sync');
+      return { studentsProcessed: 0, studentsNew: 0, studentsUpdated: 0, errors: [] };
     }
 
-    return allApiStudents.map(s => ({
-      id: s.id,
-      nombre: `${s.firstName} ${s.lastName}`,
-      email: s.email,
-      dni: s.documentNumber,
-      carrera: 'Diplomatura Universitaria',
-    }));
+    const allApiStudents = await this.fetchStudents();
+    let studentsNew = 0;
+    let studentsUpdated = 0;
+    const errors: Array<{ studentId: string; error: string }> = [];
+
+    for (const s of allApiStudents) {
+      try {
+        const conditions: string[] = [];
+        if (s.email) { conditions.push(`email.eq.${s.email}`); }
+        if (s.documentNumber) { conditions.push(`dni.eq.${s.documentNumber}`); }
+        const orFilter = conditions.join(',');
+        if (!orFilter) { continue; }
+
+        const { data: existing } = await supabaseAdmin
+          .from('students')
+          .select('id')
+          .or(orFilter)
+          .maybeSingle();
+
+        const row = {
+          name: `${s.firstName} ${s.lastName}`,
+          email: s.email,
+          dni: s.documentNumber,
+          guarani_id: s.id,
+          role: 'estudiante' as const,
+          is_active: true,
+        };
+
+        if (existing) {
+          const { error } = await supabaseAdmin
+            .from('students')
+            .update(row)
+            .eq('id', existing.id);
+          if (error) { throw new Error(error.message); }
+          studentsUpdated++;
+          await logPerStudent('guarani', existing.id, 'success', `Updated from Guaraní`);
+        } else {
+          const { error } = await supabaseAdmin
+            .from('students')
+            .upsert([row], { onConflict: 'email' });
+          if (error) { throw new Error(error.message); }
+          studentsNew++;
+        }
+      } catch (err) {
+        errors.push({
+          studentId: s.id,
+          error: (err as Error).message,
+        });
+        console.error(`[GuaraniService] Error syncing student ${s.id}:`, (err as Error).message);
+      }
+    }
+
+    console.log(
+      `[GuaraniService] Sync complete: ${allApiStudents.length} processed, ` +
+      `${studentsNew} new, ${studentsUpdated} updated, ${errors.length} errors`,
+    );
+
+    return {
+      studentsProcessed: allApiStudents.length,
+      studentsNew,
+      studentsUpdated,
+      errors,
+    };
   }
 
   async syncAcademicStatus(studentId: string): Promise<unknown> {
     const { data: enrollments } = await supabaseAdmin
       .from('enrollments')
       .select(
-        `
-        id,
-        status,
-        qualification,
-        exam_status,
-        course_id,
-        courses!inner (
-          name
-        )
-      `,
+        `id, status, qualification, exam_status, course_id, courses!inner (name)`,
       )
       .eq('student_id', studentId);
 
@@ -196,11 +233,8 @@ class GuaraniServiceImpl implements GuaraniService, AcademicProvider {
       studentId,
       enrollments: enrollments || [],
       approvedCertificates: certs || [],
-      completedCourses:
-        (enrollments || []).filter(e => e.status === 'completed').length,
-      hasPassedExam: (enrollments || []).some(
-        e => e.exam_status === 'aprobado',
-      ),
+      completedCourses: (enrollments || []).filter(e => e.status === 'completed').length,
+      hasPassedExam: (enrollments || []).some(e => e.exam_status === 'aprobado'),
     };
   }
 
@@ -227,7 +261,9 @@ class GuaraniServiceImpl implements GuaraniService, AcademicProvider {
         course_name: diplomaData.courseName,
         guarani_reference: guaraniReference,
         pushed_at: pushedAt,
-        note: 'Mock push — real Guaraní API pending DTI credentials',
+        note: isConfigured()
+          ? 'Pushed to Guaraní API'
+          : 'Mock push — real Guaraní API pending DTI credentials',
       },
     });
 

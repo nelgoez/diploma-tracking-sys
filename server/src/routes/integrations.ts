@@ -1,9 +1,13 @@
 import { Hono } from 'hono';
 import { supabaseAdmin as supabase } from '../db/supabase';
 import { authenticate, requireRole } from '../middleware/auth';
+import { createEligibilityDataAccess } from '../services/eligibility-data-access';
 import { guaraniService } from '../services/guarani.service';
 import { logSyncComplete, logSyncStart } from '../services/integration-logs';
 import { moodleService } from '../services/moodle.service';
+import { evaluateTrackEligibility } from '../services/rule-engine';
+
+const syncLocks = new Map<string, boolean>();
 
 const integrations = new Hono();
 
@@ -47,24 +51,81 @@ integrations.get('/status', requireRole('admin', 'sysadmin'), async (c) => {
 });
 
 integrations.post('/sync/moodle', requireRole('admin', 'sysadmin'), async (c) => {
+  const SYNC_KEY = 'moodle';
+
+  if (syncLocks.get(SYNC_KEY)) {
+    return c.json({ error: 'Sync already in progress' }, 409);
+  }
+  syncLocks.set(SYNC_KEY, true);
+
   const auth = c.get('auth');
   const startedAt = Date.now();
   const logId = await logSyncStart('moodle', auth?.userId || 'system');
 
   try {
-    const certificates = await moodleService.syncCertificates();
+    const result = await moodleService.syncCertificates();
+
+    let eligibilityChanges = 0;
+
+    if (result.affectedStudentIds.length > 0) {
+      const dataAccess = createEligibilityDataAccess();
+
+      const { data: enrollments } = await supabase
+        .from('enrollments')
+        .select('student_id, track_id')
+        .in('student_id', result.affectedStudentIds)
+        .eq('status', 'active');
+
+      for (const enrollment of (enrollments || [])) {
+        try {
+          const eligibility = await evaluateTrackEligibility({
+            studentId: enrollment.student_id,
+            trackId: enrollment.track_id,
+            ...dataAccess,
+          });
+
+          await supabase.from('integration_logs').insert({
+            integration_type: 'moodle',
+            operation: 'eligibility_check',
+            status: eligibility.eligible ? 'success' : 'error',
+            message: eligibility.eligible
+              ? `Student ${enrollment.student_id} is eligible for track ${enrollment.track_id}`
+              : `Student ${enrollment.student_id} is NOT eligible for track ${enrollment.track_id}. Missing: ${eligibility.missingPrerequisites.join(', ')}`,
+            details: {
+              student_id: enrollment.student_id,
+              track_id: enrollment.track_id,
+              eligible: eligibility.eligible,
+              missing_prerequisites: eligibility.missingPrerequisites,
+              evaluated_at: eligibility.evaluatedAt,
+            },
+          });
+
+          eligibilityChanges++;
+        }
+        catch (err) {
+          console.error(
+            `[Integrations] Eligibility eval failed for student ${enrollment.student_id}:`,
+            (err as Error).message,
+          );
+        }
+      }
+    }
+
     await logSyncComplete(logId, 'moodle', {
-      studentsProcessed: certificates.length,
-      studentsNew: 0,
-      studentsUpdated: certificates.length,
+      studentsProcessed: result.affectedStudentIds.length,
+      studentsNew: result.certificatesNew,
+      studentsUpdated: result.certificatesUpdated,
       errorsCount: 0,
       durationMs: Date.now() - startedAt,
     });
 
     return c.json({
-      success: true,
-      message: `Synced ${certificates.length} certificates`,
-      count: certificates.length,
+      status: 'completed',
+      students_processed: result.affectedStudentIds.length,
+      certificates_new: result.certificatesNew,
+      certificates_updated: result.certificatesUpdated,
+      errors: 0,
+      eligibility_changes: eligibilityChanges,
     });
   }
   catch (err) {
@@ -77,9 +138,12 @@ integrations.post('/sync/moodle', requireRole('admin', 'sysadmin'), async (c) =>
     });
 
     return c.json({
-      success: false,
+      status: 'error',
       error: err instanceof Error ? err.message : 'Sync failed',
     }, 500);
+  }
+  finally {
+    syncLocks.delete(SYNC_KEY);
   }
 });
 
@@ -89,19 +153,19 @@ integrations.post('/sync/guarani', requireRole('admin', 'sysadmin'), async (c) =
   const logId = await logSyncStart('guarani', auth?.userId || 'system');
 
   try {
-    const students = await guaraniService.syncStudents();
+    const result = await guaraniService.syncStudents();
     await logSyncComplete(logId, 'guarani', {
-      studentsProcessed: students.length,
-      studentsNew: 0,
-      studentsUpdated: students.length,
-      errorsCount: 0,
+      studentsProcessed: result.studentsProcessed,
+      studentsNew: result.studentsNew,
+      studentsUpdated: result.studentsUpdated,
+      errorsCount: result.errors.length,
       durationMs: Date.now() - startedAt,
     });
 
     return c.json({
       success: true,
-      message: `Synced ${students.length} students`,
-      count: students.length,
+      message: `Synced ${result.studentsNew + result.studentsUpdated} students (${result.studentsNew} new, ${result.studentsUpdated} updated, ${result.errors.length} errors)`,
+      ...result,
     });
   }
   catch (err) {

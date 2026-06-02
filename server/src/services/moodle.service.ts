@@ -14,8 +14,15 @@ export interface MoodleCertificate {
   qualification?: number
 }
 
+export interface SyncCertificatesResult {
+  certificates: MoodleCertificate[]
+  certificatesNew: number
+  certificatesUpdated: number
+  affectedStudentIds: string[]
+}
+
 export interface MoodleService {
-  syncCertificates: () => Promise<MoodleCertificate[]>
+  syncCertificates: () => Promise<SyncCertificatesResult>
   getStudentProgress: (studentId: string) => Promise<unknown>
   getCourseInfo: (courseId: string) => Promise<unknown>
 }
@@ -311,7 +318,7 @@ class MoodleServiceImpl implements MoodleService, CertificateProvider {
     }
   }
 
-  async syncCertificates(): Promise<MoodleCertificate[]> {
+  async syncCertificates(): Promise<SyncCertificatesResult> {
     const { data: students, error: studentsErr } = await supabaseAdmin
       .from('students')
       .select('id')
@@ -320,19 +327,28 @@ class MoodleServiceImpl implements MoodleService, CertificateProvider {
 
     if (studentsErr || !students?.length) {
       console.error('[MoodleService] No active students found');
-      return [];
+      return { certificates: [], certificatesNew: 0, certificatesUpdated: 0, affectedStudentIds: [] };
     }
 
     const results: MoodleCertificate[] = [];
     const BATCH_SIZE = 50;
     let totalProcessed = 0;
     let totalErrors = 0;
+    let certificatesNew = 0;
+    let certificatesUpdated = 0;
+    const affectedStudentIds = new Set<string>();
 
     for (let i = 0; i < students.length; i += BATCH_SIZE) {
       const batch = students.slice(i, i + BATCH_SIZE);
 
       for (const student of batch) {
         try {
+          const { data: existingCerts } = await supabaseAdmin
+            .from('certificates')
+            .select('course_id')
+            .eq('student_id', student.id);
+          const existingCourseIds = new Set((existingCerts || []).map(c => c.course_id));
+
           const certs = await this.fetchCertificates(student.id);
           totalProcessed++;
 
@@ -357,6 +373,15 @@ class MoodleServiceImpl implements MoodleService, CertificateProvider {
             .select('id, student_id, course_id, issue_date, qualification');
 
           if (!upserted) { continue; }
+
+          for (const row of certRows) {
+            if (existingCourseIds.has(row.course_id)) {
+              certificatesUpdated++;
+            } else {
+              certificatesNew++;
+            }
+          }
+          affectedStudentIds.add(student.id);
 
           const courseIds = [...new Set(upserted.map(c => c.course_id))];
           const { data: courseData } = await supabaseAdmin
@@ -386,16 +411,20 @@ class MoodleServiceImpl implements MoodleService, CertificateProvider {
             `[MoodleService] Error syncing student ${student.id}:`,
             (err as Error).message,
           );
-          // per-student error isolation — continue with next student
         }
       }
     }
 
     console.log(
-      `[MoodleService] Sync complete: ${totalProcessed} students processed, ${totalErrors} errors, ${results.length} certificates upserted`,
+      `[MoodleService] Sync complete: ${totalProcessed} students processed, ${totalErrors} errors, ${results.length} certificates upserted (${certificatesNew} new, ${certificatesUpdated} updated)`,
     );
 
-    return results;
+    return {
+      certificates: results,
+      certificatesNew,
+      certificatesUpdated,
+      affectedStudentIds: [...affectedStudentIds],
+    };
   }
 
   async getStudentProgress(studentId: string): Promise<unknown> {
