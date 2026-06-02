@@ -70,3 +70,4 @@ opencode.json
 *.catalog.json
 .mcpservers.json
 dbhub.toml
+nul
