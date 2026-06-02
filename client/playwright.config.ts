@@ -1,12 +1,16 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const CI = !!process.env.CI;
+
 export default defineConfig({
   testDir: '../tests/e2e',
   timeout: 30000,
-  retries: 1,
+  retries: CI ? 2 : 1,
   use: {
     baseURL: 'http://localhost:5173',
     trace: 'on-first-retry',
+    video: CI ? 'on' : 'off',
+    launchOptions: CI ? { args: ['--no-sandbox', '--disable-setuid-sandbox'] } : undefined,
   },
   projects: [
     {

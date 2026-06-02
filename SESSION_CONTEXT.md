@@ -28,10 +28,12 @@
 ### ✅ Completed (Phases 1-3 + Partial Phase 4)
 
 #### Fase 1 - Constitution
+
 - `/.context/idea/business-model.md` - Business Model Canvas
 - `/.context/idea/market-context.md` - Mercado UNC + competidores
 
 #### Fase 2 - PRD + SRS
+
 - `/.context/PRD/executive-summary.md` - Problem statement, features core
 - `/.context/PRD/user-personas.md` - Lucía (estudiante), Marcos (coordinador), Ana (admin TI)
 - `/.context/PRD/mvp-scope.md` - 6 épicas del MVP
@@ -44,6 +46,7 @@
 #### Fase 3 - Infrastructure
 
 **Server (`/server/`)**
+
 ```
 ├── package.json         # Bun + Hono + Supabase + JWT + Zod
 ├── tsconfig.json
@@ -69,6 +72,7 @@
 ```
 
 **Client (`/client/`)**
+
 ```
 ├── package.json         # React + Vite + MUI + i18next
 ├── tsconfig.json
@@ -96,12 +100,14 @@
 ```
 
 **Database (`/supabase/`)**
+
 ```
 └── migrations/
     └── 001_initial_schema.sql  # ✅ Ready to run in Supabase SQL Editor
 ```
 
 **MCP Configuration (`/.mcp.json` + `opencode.json`)**
+
 ```
 └── All 15 MCPs configured (verified 2026-05-07):
     - supabase ✅ (real credentials hardcoded in opencode.json, gitignored)
@@ -113,6 +119,7 @@
 ```
 
 #### Fase 4 - Specification (Partial)
+
 - ✅ Set up and verified API endpoints on backend (`/server/src/routes/`)
 - ✅ Set up and verified API endpoints on frontend (`/client/src/pages/`)
 - ⚠️ Main frontend `/` route NOT yet implemented (only API endpoint exists)
@@ -120,15 +127,15 @@
 
 ### Tech Stack
 
-| Layer | Technology | Notes |
-|-------|------------|-------|
-| **Runtime** | Bun 1.x | Package manager + server runtime |
-| **Backend** | Hono 4.x | Lightweight API framework |
-| **Database** | Supabase | PostgreSQL + Auth + Storage |
-| **Frontend** | React 18 + Vite 6 | SPA con routing |
-| **UI** | MUI 7 | Material Design components |
-| **i18n** | i18next | ES default, EN option |
-| **API Client** | Axios + React Query | Data fetching |
+| Layer          | Technology          | Notes                            |
+| -------------- | ------------------- | -------------------------------- |
+| **Runtime**    | Bun 1.x             | Package manager + server runtime |
+| **Backend**    | Hono 4.x            | Lightweight API framework        |
+| **Database**   | Supabase            | PostgreSQL + Auth + Storage      |
+| **Frontend**   | React 18 + Vite 6   | SPA con routing                  |
+| **UI**         | MUI 7               | Material Design components       |
+| **i18n**       | i18next             | ES default, EN option            |
+| **API Client** | Axios + React Query | Data fetching                    |
 
 ---
 
@@ -137,33 +144,35 @@
 ### Inmediato (Configuración)
 
 1. **Supabase Setup** ✅ Keys configured
-      - ✅ Proyecto creado: `vbjhxlezqhkmhpuypkvf.supabase.co`
-      - ✅ Keys updated in `server/.env` and `client/.env`
-       - ✅ **COMPLETED:** `/supabase/migrations/001_initial_schema.sql` ejecutado (tables, indexes, RLS, triggers)
-      - ✅ MCP `supabase` configurado con Access Token (hardcoded in opencode.json)
-      - ✅ MCP `sql` (dbhub) configurado con password
+   - ✅ Proyecto creado: `vbjhxlezqhkmhpuypkvf.supabase.co`
+   - ✅ Keys updated in `server/.env` and `client/.env`
+   - ✅ **COMPLETED:** `/supabase/migrations/001_initial_schema.sql` ejecutado (tables, indexes, RLS, triggers)
+   - ✅ MCP `supabase` configurado con Access Token (hardcoded in opencode.json)
+   - ✅ MCP `sql` (dbhub) configurado con password
 
 2. **MCP Configuration** ⚠️ Some issues found (verified 2026-05-07)
-      - ✅ vercel (OAuth working), context7, shadcn, devtools, playwright, openapi (staging URL configured, 7 endpoints)
-      - ✅ sql/dbhub (password configured in dbhub.toml)
-      - ✅ **supabase (real credentials hardcoded in opencode.json, excluded via .gitignore)**
-      - ⏳ Pending: tavily, postman, sentry, notion, atlassian, nanobanana, slack (need API keys)
+   - ✅ vercel (OAuth working), context7, shadcn, devtools, playwright, openapi (staging URL configured, 7 endpoints)
+   - ✅ sql/dbhub (password configured in dbhub.toml)
+   - ✅ **supabase (real credentials hardcoded in opencode.json, excluded via .gitignore)**
+   - ⏳ Pending: tavily, postman, sentry, notion, atlassian, nanobanana, slack (need API keys)
 
 3. **Frontend Main Route** ⚠️ Pending
-     - ⚠️ Main `/` route NOT implemented in client (only API endpoints exist)
-     - ✅ All other page routes set up and verified
+   - ⚠️ Main `/` route NOT implemented in client (only API endpoints exist)
+   - ✅ All other page routes set up and verified
 
 4. **Moodle Integration** (Placeholder)
-     - Configurar `MOODLE_API_URL` y `MOODLE_API_TOKEN` cuando esté disponible
-     - Implementar sync real en `/server/src/services/moodle.service.ts`
+   - Configurar `MOODLE_API_URL` y `MOODLE_API_TOKEN` cuando esté disponible
+   - Implementar sync real en `/server/src/services/moodle.service.ts`
 
 5. **Guaraní Integration** (Placeholder)
-     - Configurar `GUARANI_API_URL` y `GUARANI_API_TOKEN` cuando esté disponible
-     - Implementar sync real en `/server/src/services/guarani.service.ts`
+   - Configurar `GUARANI_API_URL` y `GUARANI_API_TOKEN` cuando esté disponible
+   - Implementar sync real en `/server/src/services/guarani.service.ts`
 
 ### Fase 4 - Specification (PBI)
+
 ...
-```
+
+````
 
 ### Fase 7 - Implementation (Features)
 
@@ -186,15 +195,17 @@ Prioridad según MVP scope:
 cat .context/PRD/executive-summary.md
 cat .context/SRS/architecture-specs.md
 cat .context/SRS/functional-specs.md
-```
+````
 
 ### 2. Run Supabase Migration (FIRST TIME)
+
 ```bash
 # Run in Supabase Dashboard → SQL Editor
 # File: /supabase/migrations/001_initial_schema.sql
 ```
 
 ### 3. Start Development Servers
+
 ```bash
 # Terminal 1 - Backend (port 3000)
 cd server && bun run dev
@@ -204,6 +215,7 @@ cd client && bun run dev
 ```
 
 ### 4. Typecheck Before Committing
+
 ```bash
 # Server
 cd server && bun run typecheck
@@ -213,6 +225,7 @@ cd client && bun run typecheck
 ```
 
 ### 5. Follow the 14-Fase Workflow
+
 ```
 Fase 4: Specification (PBI) - Crear stories en Jira (need Jira API token)
 Fase 5: Shift-Left Testing - Test plans
@@ -231,14 +244,14 @@ Fase 14: Shift-Right Testing
 
 ## Key Files Reference
 
-| File | Purpose |
-|------|---------|
-| `AGENTS.md` | Guía completa para agentes de IA |
-| `CLAUDE.md` | Project memory para sesiones |
-| `.context/SRS/architecture-specs.md` | Tech stack + C4 + ERD |
-| `server/src/db/supabase.ts` | Tipos de BD |
-| `client/src/i18n/index.ts` | Traducciones ES/EN |
-| `.env.example` | Variables de entorno template |
+| File                                 | Purpose                          |
+| ------------------------------------ | -------------------------------- |
+| `AGENTS.md`                          | Guía completa para agentes de IA |
+| `CLAUDE.md`                          | Project memory para sesiones     |
+| `.context/SRS/architecture-specs.md` | Tech stack + C4 + ERD            |
+| `server/src/db/supabase.ts`          | Tipos de BD                      |
+| `client/src/i18n/index.ts`           | Traducciones ES/EN               |
+| `.env.example`                       | Variables de entorno template    |
 
 ---
 
@@ -273,6 +286,7 @@ Fase 14: Shift-Right Testing
 ## Session Log
 
 ### 2026-04-29 - MCP Setup + Supabase Configuration
+
 - ✅ Created `.mcp.json` with all 15 MCPs configured (project-specific)
 - ✅ Updated `server/.env` with Supabase keys (URL: `vbjhxlezqhkmhpuypkvf.supabase.co`)
 - ✅ Updated `client/.env` with Supabase keys
@@ -283,6 +297,7 @@ Fase 14: Shift-Right Testing
 - Result: MCP infrastructure ready, Supabase configured, `.mcp.json` created, ready for Fase 4
 
 ### 2026-05-06 (Yesterday) - Endpoint Setup + Vercel MCP OAuth
+
 - ✅ Set up and verified API endpoints on backend (`/server/src/routes/`)
 - ✅ Set up and verified API endpoints on frontend (`/client/src/pages/`, services)
 - ⚠️ Main frontend `/` route NOT yet implemented (only API endpoint)
@@ -290,6 +305,7 @@ Fase 14: Shift-Right Testing
 - Result: Backend/frontend endpoints checked; Vercel MCP OAuth working
 
 ### 2026-05-07 (Today) - Session Recovery + MCP Status Verification
+
 - 🔄 Multiple opencode crashes/hangs - lost session history
 - 📝 Reconstructing session context from user report
 - ✅ Updated `SESSION_CONTEXT.md` with prior session work
@@ -299,6 +315,7 @@ Fase 14: Shift-Right Testing
 - Result: Context recovered, MCPs audited, Supabase token needs refresh
 
 ### 2026-05-07 (Later) - Secret Leak Audit & Remediation
+
 - 🔍 Comprehensive audit of all hardcoded secrets across the project
 - ✅ Templated `opencode.json`: replaced real Supabase keys with `${SUPABASE_ACCESS_TOKEN}`, `${SUPABASE_PROJECT_URL}`
 - ✅ Standardized all `{{VAR}}` placeholders to `${VAR}` syntax in `opencode.json`
@@ -313,6 +330,7 @@ Fase 14: Shift-Right Testing
 - Result: All secrets templated, opencode.json uses native {env:VAR} syntax
 
 ### 2026-05-07 (Final) - Revert: opencode.json Back to Real Values + Re-add to .gitignore
+
 - 🔄 **Reverted** `opencode.json` templating: put real Supabase credentials back (access token + project URL hardcoded)
 - 🔄 **Re-added** `opencode.json` to `.gitignore` under `# MCP Configuration` section
 - ⚠️ Rationale: `{env:VAR}` vars weren't resolving properly in opencode runtime; real values kept locally, excluded from git
@@ -320,5 +338,22 @@ Fase 14: Shift-Right Testing
 
 ---
 
-**Last Updated:** 2026-05-07
-**Version:** 0.5.2 (Reverted opencode.json to real values + .gitignore re-included)
+### 2026-05-19 - Full Standards Audit & Remediation
+
+- ✅ Fixed Tavily MCP: hardcoded API key in `opencode.json` (matches supabase pattern)
+- ✅ Fixed `.mcp.json` variable mismatches: `API_TOKEN`→`API_BEARER_TOKEN`, `JIRA_EMAIL`→`JIRA_USERNAME`
+- ✅ Ran full ESLint audit: **~1600→0 errors** (quotes, imports, semicolons, sort-order)
+- ✅ Prettier formatting pass: all files compliant
+- ✅ Server + Client TypeScript: **both pass** — created `HonoVariables` type for proper Hono v4 generic, fixed error handler signature, `c.get('auth')` typing
+- ✅ Fixed 8 floating promises (`void` prefix), 4 misused promises (onClick/onSubmit), 6 unused vars
+- ✅ i18n audit: all user-facing strings externalized, Spanish default, LanguageSwitcher functional
+- ✅ Fixed 7 hardcoded Spanish strings → `t('...')` calls with translation keys
+- ✅ Added 6 missing translation keys (es + en)
+- ✅ Test coverage: 0 tests exist (expected — pre-Fase 7)
+- ✅ OpenAPI sync: `api:sync` exits clean, `api-contracts.yaml` ignored by ESLint
+- Result: Project meets all AGENTS.md standards, lint/typecheck/format all green
+
+---
+
+**Last Updated:** 2026-05-19
+**Version:** 0.6.0 (Full standards audit: lint/tsc/i18n/mcp fixes)

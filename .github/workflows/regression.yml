@@ -81,9 +81,22 @@ jobs:
 
       - name: Run E2E tests
         env:
+          CI: 'true'
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
           TEST_ADMIN_EMAIL: ${{ secrets.TEST_ADMIN_EMAIL }}
           TEST_ADMIN_PASSWORD: ${{ secrets.TEST_ADMIN_PASSWORD }}
           TEST_STUDENT_EMAIL: ${{ secrets.TEST_STUDENT_EMAIL }}
           TEST_STUDENT_PASSWORD: ${{ secrets.TEST_STUDENT_PASSWORD }}
           MOCK_MODE: 'true'
         run: bunx playwright test
+
+      - name: Upload E2E recordings
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-videos
+          path: client/test-results/
+          retention-days: 7

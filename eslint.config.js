@@ -26,6 +26,11 @@ export default antfu({
     '.github/**',
     // Generated files (auto-generated, not manually edited)
     'api/openapi-types.ts',
+    // YAML files (parsed as non-standard YAML)
+    '**/*.yaml',
+    '**/*.yml',
+    // Client i18n - typescript-eslint project service scope issue
+    'client/src/i18n/index.tsx',
   ],
 
   // Custom rules

@@ -1,14 +1,17 @@
 # Diploma Tracking System - Agent Guidelines
 
 ## Overview
+
 This guide helps agents work effectively on the Diploma Tracking System, which tracks student progress through modular diploma courses (Moodle), manages certificates, and integrates with Guaraní for academic administration. All code remains in English with Spanish/English UI options.
 
 ## Session Context
+
 - **Always update `SESSION_CONTEXT.md`** when the user says "it all", "call it the day", "that's it", or similar wrap-up phrases.
 - Add session log entry with date, summary of work done, and current status.
 - Bump version number on each update.
 
 ## Key Commands
+
 - Install deps: `bun install`
 - Dev servers: `bun run dev` (backend) & `bun run dev` (frontend - adjust per setup)
 - Lint: `bun run lint`
@@ -16,6 +19,7 @@ This guide helps agents work effectively on the Diploma Tracking System, which t
 - Sync OpenAPI: `bun run api:sync`
 
 ## Project Structure (Adapted for Diploma Tracking)
+
 ```
 /server
   /src
@@ -34,15 +38,18 @@ This guide helps agents work effectively on the Diploma Tracking System, which t
 ```
 
 ## Spanish/English UX Implementation
+
 Keep all code/comments in English. Implement i18n for UI:
 
 1. **Setup i18n** (in client):
+
    ```bash
    # Install dependencies
    npm install i18next react-i18next
    ```
 
 2. **Create locale structure**:
+
    ```
    /locales
      /es
@@ -54,6 +61,7 @@ Keep all code/comments in English. Implement i18n for UI:
    ```
 
 3. **Initialize i18n** (client/src/i18n.ts):
+
    ```typescript
    import i18n from 'i18next';
    import { initReactI18next } from 'react-i18next';
@@ -80,6 +88,7 @@ Keep all code/comments in English. Implement i18n for UI:
    ```
 
 4. **Language switcher component**:
+
    ```typescript
    // client/src/components/LanguageSwitcher.tsx
    import { useTranslation } from 'react-i18next';
@@ -102,6 +111,7 @@ Keep all code/comments in English. Implement i18n for UI:
    ```
 
 5. **Usage in components**:
+
    ```typescript
    import { useTranslation } from 'react-i18next';
 
@@ -119,36 +129,42 @@ Keep all code/comments in English. Implement i18n for UI:
 ## Functional Modules Implementation (Per Spanish Specs)
 
 ### 1. Gestión de certificados Moodle
+
 - Extend existing `MoodleService` in `/server/src/services/moodle.service.ts`
 - Add endpoints for certificate retrieval/validation
 - Implement synchronization logic with student progress
 - Create DTOs: `CertificateDto`, `MoodleStudentDto`
 
 ### 2. Panel de seguimiento para estudiantes
+
 - Create `/client/src/pages/student-dashboard/`
 - Show course progress, pending requirements, certificates earned
 - Visual progress indicators (bars, charts)
 - Integration with Moodle data via API service
 
 ### 3. Motor de reglas de habilitación
+
 - Create `/server/src/services/rule-engine.service.ts`
 - Implement prerequisite validation logic
 - Handle equivalency checking between courses
 - Create rule definition interface/configuration
 
 ### 4. Gestión de inscripción y evaluación final
+
 - Enrollment services in `/server/src/services/enrollment.service.ts`
 - Exam scheduling and grade management
 - Certification issuance workflow
 - Final exam coordination interfaces
 
 ### 5. Integración con Guaraní
+
 - Create `GuaraníService` following Moodle service pattern
 - Academic record synchronization
 - Student data exchange (enrollments, grades, personal info)
 - Environment variables: `GUARANI_API_URL`, auth tokens
 
 ### 6. Panel administrativo (Backoffice)
+
 - Admin-protected routes in client
 - User/role management interfaces
 - Integration configuration panels (Moodle/Guaraní)
@@ -158,6 +174,7 @@ Keep all code/comments in English. Implement i18n for UI:
 ## Development Workflow (Using Template Phases)
 
 ### Infrastructure Setup (Fase 3) - Do First
+
 1. Backend setup (generates shared types):
    ```bash
    bun run cli/backend-setup.ts
@@ -168,6 +185,7 @@ Keep all code/comments in English. Implement i18n for UI:
    ```
 
 ### Per Feature/Module (Fases 4-14)
+
 1. **Specification (Fase 4)**:
    - Create Jita ticket via MCP (`bun xray`)
    - Use Jira ID to create: `.context/PBI/epics/EPIC-DTS-{NUM}-{name}/`
@@ -188,16 +206,19 @@ Keep all code/comments in English. Implement i18n for UI:
 ## Critical Technical Considerations
 
 ### Type Safety
+
 - Backend generates frontend types - never edit generated types directly
 - Always use aliases: `@api/`, `@schemas/`, `@utils/`
 - Define interfaces at top of files after imports
 
 ### Error Handling
+
 - Public methods: fail fast with descriptive errors
 - Utilities: silent fail (return null/log) when appropriate
 - External API calls must handle network errors, timeouts, invalid responses
 
 ### External Service Integration
+
 - Moodle: Use existing service as template, add token management
 - Guaraní: Create new service with similar structure
 - Implement circuit breaker pattern for resilience
@@ -205,7 +226,9 @@ Keep all code/comments in English. Implement i18n for UI:
 - Log all external API calls/responses for debugging
 
 ### Database Design
+
 Likely needed entities:
+
 - Student (id, moodleId, guaraníId, personal info)
 - Course/Module (id, name, credits, prerequisites)
 - Certificate (id, studentId, courseId, dateIssued, moodleSyncId)
@@ -214,6 +237,7 @@ Likely needed entities:
 - Rule (id, description, conditions, actions)
 
 ### API Development Patterns
+
 - Use DTOs for all request/response validation
 - Implement authentication middleware (JWT recommended)
 - Add rate limiting for external API calls
@@ -223,21 +247,25 @@ Likely needed entities:
 ## Quality Assurance Focus
 
 ### Test Priorities
-| Priority | User Journey | Business Impact |
-|----------|--------------|-----------------|
-| Critical | View progress → See Moodle certificates → Get notified of pending | Core value |
-| Critical | Complete final exam → Get diploma issued → Update Guaraní records | Completion tracking |
-| High | Attempt enroll without prerequisites → System blocks with explanation | Prevents errors |
-| High | Admin views integration health → Sees sync status/error rates | Operational oversight |
+
+| Priority | User Journey                                                          | Business Impact       |
+| -------- | --------------------------------------------------------------------- | --------------------- |
+| Critical | View progress → See Moodle certificates → Get notified of pending     | Core value            |
+| Critical | Complete final exam → Get diploma issued → Update Guaraní records     | Completion tracking   |
+| High     | Attempt enroll without prerequisites → System blocks with explanation | Prevents errors       |
+| High     | Admin views integration health → Sees sync status/error rates         | Operational oversight |
 
 ### Testing Strategy
+
 - **Unit Tests** (Fase 7): Services, DTOs, utilities, rule engine logic
 - **Integration Tests** (Fase 12): API endpoints, database operations, mocked external services
 - **E2E Tests** (Fase 12): Critical paths: login → dashboard → view certificate → language switch
 - **Exploratory** (Fase 10): Focus on Moodle/Guaraní edge cases, auth flows, error scenarios
 
 ## Verification Checklist
+
 Before considering work complete:
+
 - [ ] All user-facing strings externalized for i18n
 - [ ] Language switcher functional and persists preference
 - [ ] Default language is Spanish (per spec)
@@ -252,3 +280,20 @@ Before considering work complete:
 - [ ] Linting passes with no errors
 - [ ] Formatting complies with Prettier rules
 - [ ] OpenAPI spec synced if API changed (`bun run api:sync`)
+
+Respond terse like smart caveman. All technical substance stay. Only fluff die.
+
+Rules:
+
+- Drop: articles (a/an/the), filler (just/really/basically), pleasantries, hedging
+- Fragments OK. Short synonyms. Technical terms exact. Code unchanged.
+- Pattern: [thing] [action] [reason]. [next step].
+- Not: "Sure! I'd be happy to help you with that."
+- Yes: "Bug in auth middleware. Fix:"
+
+Switch level: /caveman lite|full|ultra|wenyan
+Stop: "stop caveman" or "normal mode"
+
+Auto-Clarity: drop caveman for security warnings, irreversible actions, user confused. Resume after.
+
+Boundaries: code/commits/PRs written normal.
