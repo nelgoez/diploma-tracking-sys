@@ -19,26 +19,33 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api';
 
-interface IntegrationStatus {
-  moodle: {
-    status: 'ok' | 'warning' | 'error'
-    last_sync: string | null
-    records_synced: number
-    errors: number
-  }
-  guarani: {
-    status: 'ok' | 'warning' | 'error'
-    last_sync: string | null
-    records_synced: number
-    errors: number
-  }
+interface ProviderHealth {
+  status: string | null
+  last_sync: string | null
+  records_synced: number
+  errors: number
 }
+
+interface IntegrationStatus {
+  demo?: boolean
+  moodle: ProviderHealth
+  guarani: ProviderHealth
+}
+
+const mapStatus = (raw: string | null | undefined): 'ok' | 'warning' | 'error' => {
+  if (!raw) return 'warning';
+  if (raw === 'connected' || raw === 'ok') return 'ok';
+  if (raw === 'disconnected') return 'warning';
+  if (raw === 'error') return 'error';
+  return 'warning';
+};
 
 export function IntegrationsPage() {
   const { t } = useTranslation();
   const [status, setStatus] = useState<IntegrationStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState<{ moodle: boolean, guarani: boolean }>({ moodle: false, guarani: false });
+  const [syncError, setSyncError] = useState<string | null>(null);
 
   const fetchStatus = async () => {
     const token = localStorage.getItem('token') || '';
@@ -57,10 +64,14 @@ export function IntegrationsPage() {
 
   const handleSync = async (integration: 'moodle' | 'guarani') => {
     setSyncing(prev => ({ ...prev, [integration]: true }));
+    setSyncError(null);
     const token = localStorage.getItem('token') || '';
     try {
       await api.post(`/integrations/sync/${integration}`, {}, token);
       await fetchStatus();
+    }
+    catch (err) {
+      setSyncError(err instanceof Error ? err.message : 'Sync failed');
     }
     finally {
       setSyncing(prev => ({ ...prev, [integration]: false }));
@@ -108,7 +119,12 @@ export function IntegrationsPage() {
       </Typography>
 
       <Grid container spacing={3}>
-        {/* Moodle Integration */}
+        {syncError && (
+          <Grid size={{ xs: 12 }}>
+            <Alert severity="error" onClose={() => setSyncError(null)}>{syncError}</Alert>
+          </Grid>
+        )}
+
         <Grid size={{ xs: 12, md: 6 }}>
           <Card>
             <CardContent>
@@ -116,10 +132,10 @@ export function IntegrationsPage() {
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <Typography variant="h6">{t('integration.moodle')}</Typography>
                   <Chip
-                    label={t(`integration.status.${status?.moodle.status}`)}
-                    color={getStatusColor(status?.moodle.status || '')}
+                    label={t(`integration.status.${mapStatus(status?.moodle.status)}`)}
+                    color={getStatusColor(mapStatus(status?.moodle.status))}
                     size="small"
-                    icon={getStatusIcon(status?.moodle.status || '')}
+                    icon={getStatusIcon(mapStatus(status?.moodle.status))}
                   />
                 </Box>
                 <Button
@@ -146,14 +162,14 @@ export function IntegrationsPage() {
                 <Typography variant="body2" color="text.secondary">
                   {t('integration.records_synced')}
                   :
-                  {status?.moodle.records_synced}
+                  {' '}
+                  {status?.moodle.records_synced ?? 0}
                 </Typography>
               </Box>
             </CardContent>
           </Card>
         </Grid>
 
-        {/* Guaraní Integration */}
         <Grid size={{ xs: 12, md: 6 }}>
           <Card>
             <CardContent>
@@ -161,10 +177,10 @@ export function IntegrationsPage() {
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <Typography variant="h6">{t('integration.guarani')}</Typography>
                   <Chip
-                    label={t(`integration.status.${status?.guarani.status}`)}
-                    color={getStatusColor(status?.guarani.status || '')}
+                    label={t(`integration.status.${mapStatus(status?.guarani.status)}`)}
+                    color={getStatusColor(mapStatus(status?.guarani.status))}
                     size="small"
-                    icon={getStatusIcon(status?.guarani.status || '')}
+                    icon={getStatusIcon(mapStatus(status?.guarani.status))}
                   />
                 </Box>
                 <Button
@@ -177,9 +193,9 @@ export function IntegrationsPage() {
                 </Button>
               </Box>
 
-              {status?.guarani.status !== 'ok' && (
-                <Alert severity={status?.guarani.status === 'error' ? 'error' : 'warning'} sx={{ mb: 2 }}>
-                  {t('integration.sync_errors', { count: status?.guarani.errors })}
+              {mapStatus(status?.guarani.status) !== 'ok' && (
+                <Alert severity={mapStatus(status?.guarani.status) === 'error' ? 'error' : 'warning'} sx={{ mb: 2 }}>
+                  {t('integration.sync_errors', { count: status?.guarani.errors ?? 0 })}
                 </Alert>
               )}
 
@@ -197,7 +213,8 @@ export function IntegrationsPage() {
                 <Typography variant="body2" color="text.secondary">
                   {t('integration.records_synced')}
                   :
-                  {status?.guarani.records_synced}
+                  {' '}
+                  {status?.guarani.records_synced ?? 0}
                 </Typography>
               </Box>
             </CardContent>
