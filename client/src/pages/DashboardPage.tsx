@@ -1,10 +1,7 @@
 import {
   Assignment as AssignmentIcon,
   CheckCircle as CheckCircleIcon,
-  EmojiEvents as DiplomaIcon,
-  People as PeopleIcon,
   School as SchoolIcon,
-  SyncProblem as SyncErrorIcon,
   TrendingUp as TrendingUpIcon,
 } from '@mui/icons-material';
 import {
@@ -22,6 +19,7 @@ import {
 } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { AdminStatsGrid } from '../components/AdminStatsGrid';
 import { GradeExamModal } from '../components/GradeExamModal';
 import { api } from '../lib/api';
 
@@ -170,60 +168,22 @@ export function DashboardPage() {
   };
 
   if (!isStudent) {
-    const statCards = [
-      { label: 'admin.stats.total_students', value: adminStats?.total_students ?? '-', icon: PeopleIcon, color: 'primary' as const },
-      { label: 'admin.stats.active_students', value: adminStats?.active_students ?? '-', icon: SchoolIcon, color: 'success' as const },
-      { label: 'admin.stats.active_tracks', value: adminStats?.active_tracks ?? '-', icon: AssignmentIcon, color: 'info' as const },
-      { label: 'admin.stats.certificates_issued', value: adminStats?.total_certificates ?? '-', icon: DiplomaIcon, color: 'secondary' as const },
-      { label: 'admin.stats.eligible', value: adminStats?.eligible_count ?? '-', icon: CheckCircleIcon, color: 'success' as const },
-      { label: 'admin.stats.not_eligible', value: adminStats?.not_eligible_count ?? '-', icon: CheckCircleIcon, color: 'error' as const },
-      { label: 'admin.stats.completion_rate', value: adminStats ? `${adminStats.completion_rate}%` : '-', icon: TrendingUpIcon, color: 'info' as const },
-    ];
-
     return (
       <Box>
         <Typography variant="h4" gutterBottom>
           {`${t('dashboard.welcome')}, ${localStorage.getItem('userName') || t('dashboard.user_fallback')}`}
         </Typography>
-        <Grid container spacing={3}>
-          {statCards.map((stat) => {
-            const Icon = stat.icon;
-            return (
-              <Grid size={{ xs: 12, sm: 6, md: 4 }} key={stat.label}>
-                <Card>
-                  <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <Icon color={stat.color} sx={{ fontSize: 40 }} />
-                    <Box>
-                      <Typography variant="h4">{stat.value}</Typography>
-                      <Typography variant="body2" color="text.secondary">{t(stat.label)}</Typography>
-                    </Box>
-                  </CardContent>
-                </Card>
-              </Grid>
-            );
-          })}
-          {adminStats && adminStats.recent_sync_errors > 0 && (
-            <Grid size={{ xs: 12 }}>
-              <Alert severity="warning" icon={<SyncErrorIcon />}>
-                {adminStats.recent_sync_errors}
-                {' '}
-                sync errors in last 7 days
-              </Alert>
-            </Grid>
-          )}
-          <Grid size={{ xs: 12 }}>
-            <Box sx={{ mt: 1 }}>
-              <Button
-                variant="contained"
-                color="primary"
-                startIcon={<AssignmentIcon />}
-                onClick={() => setGradeModalOpen(true)}
-              >
-                Grade Student Exams
-              </Button>
-            </Box>
-          </Grid>
-        </Grid>
+        <AdminStatsGrid stats={adminStats} showSyncAlert />
+        <Box sx={{ mt: 2 }}>
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<AssignmentIcon />}
+            onClick={() => setGradeModalOpen(true)}
+          >
+            {t('button.grade_student_exams')}
+          </Button>
+        </Box>
         <GradeExamModal
           open={gradeModalOpen}
           onClose={() => setGradeModalOpen(false)}

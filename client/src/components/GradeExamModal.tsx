@@ -12,6 +12,7 @@ import {
   Typography,
 } from '@mui/material';
 import { useEffect, useState } from 'react';
+import { t } from '../i18n';
 import { api } from '../lib/api';
 
 interface EnrollmentOption {
@@ -66,7 +67,7 @@ export function GradeExamModal({ open, onClose, enrollmentId, studentName, onGra
         const isAdmin = ['admin', 'sysadmin', 'coordinador'].includes(tokenPayload.role);
 
         if (!isAdmin) {
-          setError('Unauthorized: only coordinators and admins can grade exams');
+          setError(t('grade_exam.unauthorized'));
           return;
         }
 
@@ -75,7 +76,7 @@ export function GradeExamModal({ open, onClose, enrollmentId, studentName, onGra
         setEnrollments(inscripto);
       }
       catch {
-        setError('Failed to load enrollments');
+        setError(t('grade_exam.load_error'));
       }
       finally {
         setFetching(false);
@@ -88,15 +89,15 @@ export function GradeExamModal({ open, onClose, enrollmentId, studentName, onGra
   const validateQualification = (value: string): boolean => {
     const num = Number(value);
     if (!value.trim()) {
-      setQualificationError('Qualification is required');
+      setQualificationError(t('grade_exam.error_required'));
       return false;
     }
     if (!Number.isInteger(num)) {
-      setQualificationError('Qualification must be an integer');
+      setQualificationError(t('grade_exam.error_integer'));
       return false;
     }
     if (num < 1 || num > 10) {
-      setQualificationError('Qualification must be between 1 and 10');
+      setQualificationError(t('grade_exam.error_range'));
       return false;
     }
     setQualificationError(null);
@@ -110,7 +111,7 @@ export function GradeExamModal({ open, onClose, enrollmentId, studentName, onGra
     const targetId = enrollmentId || selectedEnrollment?.id;
 
     if (!targetId) {
-      setError('No enrollment selected');
+      setError(t('grade_exam.no_enrollment_selected'));
       return;
     }
 
@@ -129,7 +130,7 @@ export function GradeExamModal({ open, onClose, enrollmentId, studentName, onGra
       onGraded();
     }
     catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to record grade');
+      setError(err instanceof Error ? err.message : t('grade_exam.record_grade_error'));
     }
     finally {
       setLoading(false);
@@ -147,13 +148,13 @@ export function GradeExamModal({ open, onClose, enrollmentId, studentName, onGra
     <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
       <DialogTitle>
         {enrollmentId && studentName
-          ? `Grade Exam — ${studentName}`
-          : 'Grade Student Exam'}
+          ? `${t('grade_exam.dialog_title')} — ${studentName}`
+          : t('grade_exam.dialog_title')}
       </DialogTitle>
       <DialogContent>
         {fetching && (
           <Box sx={{ py: 3 }}>
-            <Typography color="text.secondary">Loading enrollments...</Typography>
+            <Typography color="text.secondary">{t('grade_exam.loading')}</Typography>
           </Box>
         )}
 
@@ -163,8 +164,8 @@ export function GradeExamModal({ open, onClose, enrollmentId, studentName, onGra
 
         {success && (
           <Alert severity="success" sx={{ mb: 2 }}>
-            Grade recorded successfully
-            {Number(qualification) >= 4 ? ' — Student approved' : ' — Student not approved'}
+            {t('grade_exam.success')}
+            {Number(qualification) >= 4 ? t('grade_exam.approved') : t('grade_exam.not_approved')}
           </Alert>
         )}
 
@@ -183,18 +184,18 @@ export function GradeExamModal({ open, onClose, enrollmentId, studentName, onGra
             renderInput={(params) => (
               <TextField
                 {...params}
-                label="Select Enrollment"
+                label={t('grade_exam.select_enrollment')}
                 margin="normal"
                 fullWidth
-                helperText="Only enrollments with 'inscripto' status are shown"
+                helperText={t('grade_exam.helper_text')}
               />
             )}
-            noOptionsText="No enrollments in 'inscripto' status found"
+            noOptionsText={t('grade_exam.no_inscripto')}
           />
         )}
 
         <TextField
-          label="Qualification (1-10)"
+          label={t('grade_exam.qualification_label')}
           type="number"
           fullWidth
           margin="normal"
@@ -210,14 +211,14 @@ export function GradeExamModal({ open, onClose, enrollmentId, studentName, onGra
             if (e.key === 'Enter') void handleGrade();
           }}
           error={!!qualificationError}
-          helperText={qualificationError || 'Enter an integer from 1 to 10'}
+          helperText={qualificationError || t('grade_exam.enter_integer')}
           inputProps={{ min: 1, max: 10, step: 1 }}
           slotProps={{ htmlInput: { inputMode: 'numeric', pattern: '[0-9]*' } }}
           disabled={loading || success}
         />
 
         <TextField
-          label="Observations (optional)"
+          label={t('grade_exam.observations')}
           fullWidth
           multiline
           rows={2}
@@ -229,7 +230,7 @@ export function GradeExamModal({ open, onClose, enrollmentId, studentName, onGra
       </DialogContent>
       <DialogActions>
         <Button onClick={handleClose} disabled={loading}>
-          {success ? 'Close' : 'Cancel'}
+          {success ? t('grade_exam.close') : t('button.cancel')}
         </Button>
         <Button
           variant="contained"
@@ -238,7 +239,7 @@ export function GradeExamModal({ open, onClose, enrollmentId, studentName, onGra
           disabled={!!success || (!enrollmentId && !selectedEnrollment) || !!fetching || loading}
           startIcon={loading ? <CircularProgress size={20} color="inherit" /> : undefined}
         >
-          {success ? 'Done' : loading ? 'Submitting...' : 'Submit Grade'}
+          {success ? t('grade_exam.done') : loading ? t('grade_exam.submitting') : t('grade_exam.submit_grade')}
         </Button>
       </DialogActions>
     </Dialog>
