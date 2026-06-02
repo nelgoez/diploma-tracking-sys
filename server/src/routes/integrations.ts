@@ -5,6 +5,7 @@ import { createEligibilityDataAccess } from '../services/eligibility-data-access
 import { guaraniService } from '../services/guarani.service';
 import { logSyncComplete, logSyncStart } from '../services/integration-logs';
 import { moodleService } from '../services/moodle.service';
+import { consolidateCertNotifications, upsertEligibilityNotification } from '../services/notification.service';
 import { evaluateTrackEligibility } from '../services/rule-engine';
 
 const syncLocks = new Map<string, boolean>();
@@ -67,6 +68,24 @@ integrations.post('/sync/moodle', requireRole('admin', 'sysadmin'), async (c) =>
 
     let eligibilityChanges = 0;
 
+    for (const detail of result.studentCertDetails) {
+      if (detail.newCount > 0) {
+        try {
+          await consolidateCertNotifications(
+            detail.studentId,
+            detail.newCount,
+            detail.newCourseNames,
+          );
+        }
+        catch (err) {
+          console.error(
+            `[Integrations] Notification create failed for student ${detail.studentId}:`,
+            (err as Error).message,
+          );
+        }
+      }
+    }
+
     if (result.affectedStudentIds.length > 0) {
       const dataAccess = createEligibilityDataAccess();
 
@@ -78,6 +97,19 @@ integrations.post('/sync/moodle', requireRole('admin', 'sysadmin'), async (c) =>
 
       for (const enrollment of (enrollments || [])) {
         try {
+          const { data: prevLog } = await supabase
+            .from('integration_logs')
+            .select('details')
+            .eq('integration_type', 'moodle')
+            .eq('operation', 'eligibility_check')
+            .eq('details->>student_id', enrollment.student_id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          const prevDetails = prevLog?.details as Record<string, unknown> | null;
+          const previouslyEligible = prevDetails?.eligible === true;
+
           const eligibility = await evaluateTrackEligibility({
             studentId: enrollment.student_id,
             trackId: enrollment.track_id,
@@ -99,6 +131,20 @@ integrations.post('/sync/moodle', requireRole('admin', 'sysadmin'), async (c) =>
               evaluated_at: eligibility.evaluatedAt,
             },
           });
+
+          if (previouslyEligible !== eligibility.eligible) {
+            const { data: track } = await supabase
+              .from('tracks')
+              .select('name')
+              .eq('id', enrollment.track_id)
+              .single();
+
+            await upsertEligibilityNotification(
+              enrollment.student_id,
+              track?.name || enrollment.track_id,
+              eligibility.eligible,
+            );
+          }
 
           eligibilityChanges++;
         }

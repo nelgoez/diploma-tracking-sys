@@ -14,11 +14,18 @@ export interface MoodleCertificate {
   qualification?: number
 }
 
+export interface StudentCertDetail {
+  studentId: string
+  newCount: number
+  newCourseNames: string[]
+}
+
 export interface SyncCertificatesResult {
   certificates: MoodleCertificate[]
   certificatesNew: number
   certificatesUpdated: number
   affectedStudentIds: string[]
+  studentCertDetails: StudentCertDetail[]
 }
 
 export interface MoodleService {
@@ -327,7 +334,7 @@ class MoodleServiceImpl implements MoodleService, CertificateProvider {
 
     if (studentsErr || !students?.length) {
       console.error('[MoodleService] No active students found');
-      return { certificates: [], certificatesNew: 0, certificatesUpdated: 0, affectedStudentIds: [] };
+      return { certificates: [], certificatesNew: 0, certificatesUpdated: 0, affectedStudentIds: [], studentCertDetails: [] };
     }
 
     const results: MoodleCertificate[] = [];
@@ -337,6 +344,7 @@ class MoodleServiceImpl implements MoodleService, CertificateProvider {
     let certificatesNew = 0;
     let certificatesUpdated = 0;
     const affectedStudentIds = new Set<string>();
+    const studentDetailsMap = new Map<string, { newCount: number, newCourseNames: string[] }>();
 
     for (let i = 0; i < students.length; i += BATCH_SIZE) {
       const batch = students.slice(i, i + BATCH_SIZE);
@@ -374,11 +382,14 @@ class MoodleServiceImpl implements MoodleService, CertificateProvider {
 
           if (!upserted) { continue; }
 
+          const studentNewCourseIds: string[] = [];
           for (const row of certRows) {
             if (existingCourseIds.has(row.course_id)) {
               certificatesUpdated++;
-            } else {
+            }
+            else {
               certificatesNew++;
+              studentNewCourseIds.push(row.course_id);
             }
           }
           affectedStudentIds.add(student.id);
@@ -392,6 +403,21 @@ class MoodleServiceImpl implements MoodleService, CertificateProvider {
           const courseMap = new Map<string, string>();
           for (const c of courseData || []) {
             courseMap.set(c.id, c.name);
+          }
+
+          if (studentNewCourseIds.length > 0) {
+            const names = studentNewCourseIds.map(cid => courseMap.get(cid) || cid);
+            if (studentDetailsMap.has(student.id)) {
+              const existing = studentDetailsMap.get(student.id)!;
+              existing.newCount += studentNewCourseIds.length;
+              existing.newCourseNames.push(...names);
+            }
+            else {
+              studentDetailsMap.set(student.id, {
+                newCount: studentNewCourseIds.length,
+                newCourseNames: names,
+              });
+            }
           }
 
           for (const cert of upserted) {
@@ -424,6 +450,10 @@ class MoodleServiceImpl implements MoodleService, CertificateProvider {
       certificatesNew,
       certificatesUpdated,
       affectedStudentIds: [...affectedStudentIds],
+      studentCertDetails: [...studentDetailsMap.entries()].map(([studentId, details]) => ({
+        studentId,
+        ...details,
+      })),
     };
   }
 
