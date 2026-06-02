@@ -47,4 +47,20 @@ export const api = {
     if (!res.ok) { throw new Error(`API error ${res.status}`); }
     return res.json() as Promise<T>;
   },
+
+  async put<T>(path: string, body: unknown, token: string): Promise<T> {
+    const res = await fetch(`${API_URL}${path}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: `API error ${res.status}` }));
+      throw new Error(err.error || `API error ${res.status}`);
+    }
+    return res.json() as Promise<T>;
+  },
 };

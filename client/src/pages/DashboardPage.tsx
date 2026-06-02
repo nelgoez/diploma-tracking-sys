@@ -22,6 +22,7 @@ import {
 } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { GradeExamModal } from '../components/GradeExamModal';
 import { api } from '../lib/api';
 
 interface StudentProgress {
@@ -62,6 +63,7 @@ export function DashboardPage() {
   const [registering, setRegistering] = useState(false);
   const [registrationMessage, setRegistrationMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
   const [isStudent, setIsStudent] = useState(false);
+  const [gradeModalOpen, setGradeModalOpen] = useState(false);
 
   const fetchStudentData = async () => {
     const userId = localStorage.getItem('userId') || '';
@@ -209,7 +211,27 @@ export function DashboardPage() {
               </Alert>
             </Grid>
           )}
+          <Grid size={{ xs: 12 }}>
+            <Box sx={{ mt: 1 }}>
+              <Button
+                variant="contained"
+                color="primary"
+                startIcon={<AssignmentIcon />}
+                onClick={() => setGradeModalOpen(true)}
+              >
+                Grade Student Exams
+              </Button>
+            </Box>
+          </Grid>
         </Grid>
+        <GradeExamModal
+          open={gradeModalOpen}
+          onClose={() => setGradeModalOpen(false)}
+          onGraded={() => {
+            setGradeModalOpen(false);
+            void fetchStudentData();
+          }}
+        />
       </Box>
     );
   }

@@ -1,0 +1,246 @@
+import {
+  Alert,
+  Autocomplete,
+  Box,
+  Button,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  TextField,
+  Typography,
+} from '@mui/material';
+import { useEffect, useState } from 'react';
+import { api } from '../lib/api';
+
+interface EnrollmentOption {
+  id: string
+  student_name: string
+  course_name: string
+  track_name: string
+  exam_date: string
+}
+
+interface GradeExamModalProps {
+  open: boolean
+  onClose: () => void
+  enrollmentId?: string
+  studentName?: string
+  onGraded: () => void
+}
+
+export function GradeExamModal({ open, onClose, enrollmentId, studentName, onGraded }: GradeExamModalProps) {
+  const [enrollments, setEnrollments] = useState<EnrollmentOption[]>([]);
+  const [selectedEnrollment, setSelectedEnrollment] = useState<EnrollmentOption | null>(null);
+  const [qualification, setQualification] = useState<string>('');
+  const [observations, setObservations] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+  const [qualificationError, setQualificationError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open) {
+      setSelectedEnrollment(null);
+      setQualification('');
+      setObservations('');
+      setError(null);
+      setSuccess(false);
+      setQualificationError(null);
+      return;
+    }
+
+    if (enrollmentId) {
+      setFetching(false);
+      return;
+    }
+
+    const fetchEnrollments = async () => {
+      setFetching(true);
+      setError(null);
+      const token = localStorage.getItem('token') || '';
+      try {
+        const tokenPayload = JSON.parse(atob(token.split('.')[1])) as { role: string };
+        const isAdmin = ['admin', 'sysadmin', 'coordinador'].includes(tokenPayload.role);
+
+        if (!isAdmin) {
+          setError('Unauthorized: only coordinators and admins can grade exams');
+          return;
+        }
+
+        const data = await api.get<EnrollmentOption[]>('/enrollments?exam_history=true', token);
+        const inscripto = data.filter((e: any) => e.exam_status === 'inscripto');
+        setEnrollments(inscripto);
+      }
+      catch {
+        setError('Failed to load enrollments');
+      }
+      finally {
+        setFetching(false);
+      }
+    };
+
+    fetchEnrollments();
+  }, [open, enrollmentId]);
+
+  const validateQualification = (value: string): boolean => {
+    const num = Number(value);
+    if (!value.trim()) {
+      setQualificationError('Qualification is required');
+      return false;
+    }
+    if (!Number.isInteger(num)) {
+      setQualificationError('Qualification must be an integer');
+      return false;
+    }
+    if (num < 1 || num > 10) {
+      setQualificationError('Qualification must be between 1 and 10');
+      return false;
+    }
+    setQualificationError(null);
+    return true;
+  };
+
+  const handleGrade = async () => {
+    if (!validateQualification(qualification)) return;
+
+    const token = localStorage.getItem('token') || '';
+    const targetId = enrollmentId || selectedEnrollment?.id;
+
+    if (!targetId) {
+      setError('No enrollment selected');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setSuccess(false);
+
+    try {
+      const body: Record<string, unknown> = { qualification: Number(qualification) };
+      if (observations.trim()) {
+        body.observations = observations.trim();
+      }
+
+      await api.put(`/enrollments/${targetId}/grade`, body, token);
+      setSuccess(true);
+      onGraded();
+    }
+    catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to record grade');
+    }
+    finally {
+      setLoading(false);
+    }
+  };
+
+  const handleClose = () => {
+    if (success) {
+      onGraded();
+    }
+    onClose();
+  };
+
+  return (
+    <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+      <DialogTitle>
+        {enrollmentId && studentName
+          ? `Grade Exam — ${studentName}`
+          : 'Grade Student Exam'}
+      </DialogTitle>
+      <DialogContent>
+        {fetching && (
+          <Box sx={{ py: 3 }}>
+            <Typography color="text.secondary">Loading enrollments...</Typography>
+          </Box>
+        )}
+
+        {error && (
+          <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
+        )}
+
+        {success && (
+          <Alert severity="success" sx={{ mb: 2 }}>
+            Grade recorded successfully
+            {Number(qualification) >= 4 ? ' — Student approved' : ' — Student not approved'}
+          </Alert>
+        )}
+
+        {!enrollmentId && !fetching && (
+          <Autocomplete
+            options={enrollments}
+            getOptionLabel={(opt) =>
+              `${opt.student_name} — ${opt.course_name || opt.track_name} (${opt.exam_date})`
+            }
+            value={selectedEnrollment}
+            onChange={(_, newValue) => {
+              setSelectedEnrollment(newValue);
+              setError(null);
+            }}
+            isOptionEqualToValue={(option, value) => option.id === value.id}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Select Enrollment"
+                margin="normal"
+                fullWidth
+                helperText="Only enrollments with 'inscripto' status are shown"
+              />
+            )}
+            noOptionsText="No enrollments in 'inscripto' status found"
+          />
+        )}
+
+        <TextField
+          label="Qualification (1-10)"
+          type="number"
+          fullWidth
+          margin="normal"
+          value={qualification}
+          onChange={(e) => {
+            setQualification(e.target.value);
+            setQualificationError(null);
+          }}
+          onBlur={() => {
+            if (qualification) validateQualification(qualification);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') void handleGrade();
+          }}
+          error={!!qualificationError}
+          helperText={qualificationError || 'Enter an integer from 1 to 10'}
+          inputProps={{ min: 1, max: 10, step: 1 }}
+          slotProps={{ htmlInput: { inputMode: 'numeric', pattern: '[0-9]*' } }}
+          disabled={loading || success}
+        />
+
+        <TextField
+          label="Observations (optional)"
+          fullWidth
+          multiline
+          rows={2}
+          margin="normal"
+          value={observations}
+          onChange={(e) => setObservations(e.target.value)}
+          disabled={loading || success}
+        />
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={handleClose} disabled={loading}>
+          {success ? 'Close' : 'Cancel'}
+        </Button>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={() => void handleGrade()}
+          disabled={!!success || (!enrollmentId && !selectedEnrollment) || !!fetching || loading}
+          startIcon={loading ? <CircularProgress size={20} color="inherit" /> : undefined}
+        >
+          {success ? 'Done' : loading ? 'Submitting...' : 'Submit Grade'}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
