@@ -331,7 +331,7 @@ class MoodleServiceImpl implements MoodleService, CertificateProvider {
     }
 
     const results: MoodleCertificate[] = [];
-    const BATCH_SIZE = 50;
+    const BATCH_SIZE = process.env.VERCEL ? 5 : 50;
     let totalProcessed = 0;
     let totalErrors = 0;
     let certificatesNew = 0;
