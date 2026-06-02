@@ -91,7 +91,7 @@ jobs:
           TEST_STUDENT_EMAIL: ${{ secrets.TEST_STUDENT_EMAIL }}
           TEST_STUDENT_PASSWORD: ${{ secrets.TEST_STUDENT_PASSWORD }}
           MOCK_MODE: 'true'
-        run: bunx playwright test
+        run: bun playwright test
 
       - name: Upload E2E recordings
         if: failure()
