@@ -36,7 +36,8 @@ jobs:
         run: bunx playwright install chromium --with-deps
 
       - name: Run UX smoke tests
-        run: bunx --bun playwright test --config=client/playwright.config.ts ux-smoke.spec.ts
+        working-directory: client
+        run: bun playwright test ux-smoke.spec.ts
         env:
           CI: 'true'
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
