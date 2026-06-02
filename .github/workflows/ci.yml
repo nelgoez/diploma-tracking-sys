@@ -10,7 +10,6 @@ jobs:
   server:
     name: Server — Typecheck + Tests
     runs-on: ubuntu-latest
-    environment: production
     defaults:
       run:
         working-directory: server
@@ -50,7 +49,6 @@ jobs:
   client:
     name: Client — Build
     runs-on: ubuntu-latest
-    environment: production
     defaults:
       run:
         working-directory: client

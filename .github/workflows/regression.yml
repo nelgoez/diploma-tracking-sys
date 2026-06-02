@@ -18,7 +18,6 @@ jobs:
   server-regression:
     name: Server Regression
     runs-on: ubuntu-latest
-    environment: production
     defaults:
       run:
         working-directory: server
@@ -62,7 +61,6 @@ jobs:
   e2e-regression:
     name: E2E Regression
     runs-on: ubuntu-latest
-    environment: production
     defaults:
       run:
         working-directory: client
