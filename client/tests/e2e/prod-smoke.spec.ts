@@ -78,10 +78,7 @@ test.describe('@prod Production Validation', () => {
     await page.waitForURL('**/dashboard', { timeout: 15000 });
 
     await expect(page.getByTestId('main-content')).toBeVisible({ timeout: 10000 });
-
-    const bodyText = await page.locator('main').textContent();
-    expect(bodyText).toBeTruthy();
-    expect(bodyText).not.toContain('undefined');
-    expect(bodyText).not.toContain('Error');
+    await expect(page.getByTestId('user-role')).toBeVisible();
+    await expect(page.getByTestId('user-name')).toBeVisible();
   });
 });
