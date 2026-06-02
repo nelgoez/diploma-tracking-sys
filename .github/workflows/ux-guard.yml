@@ -11,6 +11,7 @@ jobs:
   ux-smoke:
     name: UX Smoke — Routing, Identity, Roles, Sync
     runs-on: ubuntu-latest
+    environment: production
     timeout-minutes: 5
     steps:
       - name: Checkout

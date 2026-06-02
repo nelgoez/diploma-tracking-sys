@@ -9,6 +9,7 @@ jobs:
   server-smoke:
     name: Server Smoke
     runs-on: ubuntu-latest
+    environment: production
     defaults:
       run:
         working-directory: server
@@ -44,6 +45,7 @@ jobs:
   client-smoke:
     name: Client Build Smoke
     runs-on: ubuntu-latest
+    environment: production
     defaults:
       run:
         working-directory: client
