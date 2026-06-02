@@ -26,6 +26,10 @@ export default defineConfig({
       env: {
         MOCK_MODE: 'true',
         NODE_ENV: 'test',
+        SUPABASE_URL: process.env.SUPABASE_URL || 'http://localhost:54321',
+        SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+        SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY || '',
+        JWT_SECRET: process.env.JWT_SECRET || 'dev-secret',
       },
     },
     {
