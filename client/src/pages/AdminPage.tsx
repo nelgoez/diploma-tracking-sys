@@ -27,6 +27,7 @@ import {
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AdminStatsGrid } from '../components/AdminStatsGrid';
+import { CourseManagement } from '../components/CourseManagement';
 import { api } from '../lib/api';
 
 interface DashboardStats {
@@ -60,7 +61,7 @@ interface StudentsResponse {
 
 export function AdminPage() {
   const { t } = useTranslation();
-  const [tab, setTab] = useState<'dashboard' | 'students'>('dashboard');
+  const [tab, setTab] = useState<'dashboard' | 'students' | 'courses'>('dashboard');
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -127,6 +128,7 @@ export function AdminPage() {
   const tabs = [
     { key: 'dashboard' as const, label: 'Dashboard' },
     { key: 'students' as const, label: 'Students' },
+    { key: 'courses' as const, label: 'Courses' },
   ];
 
   return (
@@ -286,6 +288,8 @@ export function AdminPage() {
           </CardContent>
         </Card>
       )}
+
+      {tab === 'courses' && <CourseManagement />}
     </Box>
   );
 }

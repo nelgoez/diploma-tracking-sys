@@ -1,6 +1,10 @@
 import {
+  AdminPanelSettings as AdminIcon,
   Assignment as AssignmentIcon,
+  Category as CategoryIcon,
   CheckCircle as CheckCircleIcon,
+  EmojiEvents as DiplomaIcon,
+  People as PeopleIcon,
   School as SchoolIcon,
   TrendingUp as TrendingUpIcon,
 } from '@mui/icons-material';
@@ -19,7 +23,6 @@ import {
 } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AdminStatsGrid } from '../components/AdminStatsGrid';
 import { GradeExamModal } from '../components/GradeExamModal';
 import { api } from '../lib/api';
 
@@ -168,22 +171,124 @@ export function DashboardPage() {
   };
 
   if (!isStudent) {
+    const role = JSON.parse(atob((localStorage.getItem('token') || '').split('.')[1] || '{}') || '{}').role || '';
+    const stats = adminStats;
     return (
       <Box>
         <Typography variant="h4" gutterBottom>
           {`${t('dashboard.welcome')}, ${localStorage.getItem('userName') || t('dashboard.user_fallback')}`}
         </Typography>
-        <AdminStatsGrid stats={adminStats} showSyncAlert />
-        <Box sx={{ mt: 2 }}>
-          <Button
-            variant="contained"
-            color="primary"
-            startIcon={<AssignmentIcon />}
-            onClick={() => setGradeModalOpen(true)}
-          >
-            {t('button.grade_student_exams')}
-          </Button>
-        </Box>
+
+        <Grid container spacing={2} sx={{ mb: 3 }}>
+          <Grid size={{ xs: 6, sm: 3 }}>
+            <Card>
+              <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 1.5, py: 1.5 }}>
+                <PeopleIcon color="primary" />
+                <Box>
+                  <Typography variant="h5">{stats?.total_students ?? '-'}</Typography>
+                  <Typography variant="caption" color="text.secondary">{t('admin.stats.total_students')}</Typography>
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid size={{ xs: 6, sm: 3 }}>
+            <Card>
+              <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 1.5, py: 1.5 }}>
+                <SchoolIcon color="success" />
+                <Box>
+                  <Typography variant="h5">{stats?.active_tracks ?? '-'}</Typography>
+                  <Typography variant="caption" color="text.secondary">{t('admin.stats.active_tracks')}</Typography>
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid size={{ xs: 6, sm: 3 }}>
+            <Card>
+              <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 1.5, py: 1.5 }}>
+                <DiplomaIcon color="secondary" />
+                <Box>
+                  <Typography variant="h5">{stats?.total_certificates ?? '-'}</Typography>
+                  <Typography variant="caption" color="text.secondary">{t('admin.stats.certificates_issued')}</Typography>
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid size={{ xs: 6, sm: 3 }}>
+            <Card>
+              <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 1.5, py: 1.5 }}>
+                <CheckCircleIcon color="success" />
+                <Box>
+                  <Typography variant="h5">{stats?.eligible_count ?? '-'}</Typography>
+                  <Typography variant="caption" color="text.secondary">{t('admin.stats.eligible')}</Typography>
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+
+        <Card sx={{ mb: 2 }}>
+          <CardContent>
+            <Typography variant="subtitle1" gutterBottom>{t('dashboard.quick_actions')}</Typography>
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+              <Button
+                variant="contained"
+                color="primary"
+                startIcon={<AssignmentIcon />}
+                onClick={() => setGradeModalOpen(true)}
+                data-testid="grade-exam-btn"
+              >
+                {t('button.grade_student_exams')}
+              </Button>
+              {role !== 'sysadmin' && (
+                <Button
+                  variant="outlined"
+                  startIcon={<AdminIcon />}
+                  href="/admin"
+                >
+                  {t('nav.admin')}
+                </Button>
+              )}
+              {role === 'sysadmin' && (
+                <Button
+                  variant="outlined"
+                  startIcon={<CategoryIcon />}
+                  href="/sysadmin"
+                >
+                  System Admin
+                </Button>
+              )}
+              <Button
+                variant="outlined"
+                startIcon={<SchoolIcon />}
+                href="/courses"
+              >
+                {t('nav.courses')}
+              </Button>
+            </Box>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent>
+            <Typography variant="subtitle1" gutterBottom>
+              {role === 'admin' ? 'Administrator Dashboard' : role === 'coordinador' ? 'Coordinador Dashboard' : 'System Dashboard'}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {role === 'admin'
+                ? 'Manage students, view certificates, and monitor diploma progress from the '
+                + 'Administration panel. Track eligibility status and handle enrollments.'
+                : role === 'coordinador'
+                  ? 'Review student eligibility, manage exam registrations, and configure prerequisite rules.'
+                  : 'Full system access: manage courses, tracks, rules, overrides, integrations, and diagnostics.'}
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+              {role === 'admin' || role === 'sysadmin'
+                ? 'Use the Administration panel for detailed student management, tracks, and courses.'
+                : 'Check the coordinator dashboard for exam registration and student management.'}
+            </Typography>
+          </CardContent>
+        </Card>
+
         <GradeExamModal
           open={gradeModalOpen}
           onClose={() => setGradeModalOpen(false)}

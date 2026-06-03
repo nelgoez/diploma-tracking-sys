@@ -35,6 +35,7 @@ import {
   Typography,
 } from '@mui/material';
 import { useEffect, useState } from 'react';
+import { CourseManagement } from '../components/CourseManagement';
 import { api } from '../lib/api';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
@@ -122,17 +123,7 @@ export function SysAdminPage() {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<'create' | 'edit'>('create');
-  const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [editingTrack, setEditingTrack] = useState<Track | null>(null);
-  const [form, setForm] = useState({
-    name: '',
-    code: '',
-    credits: 4,
-    track_id: '',
-    is_integrator_exam: false,
-    is_active: true,
-    order_index: 0,
-  });
   const [trackForm, setTrackForm] = useState({
     name: '',
     code: '',
@@ -265,28 +256,6 @@ export function SysAdminPage() {
     else { void fetchDiagnostics(); }
   }, [tab, overrideStatusFilter]);
 
-  const handleSaveCourse = async () => {
-    try {
-      if (dialogMode === 'create') {
-        await api.post('/courses', form, token);
-        setSnackbar({ open: true, message: 'Course created', severity: 'success' });
-      }
-      else if (editingCourse) {
-        await fetch(`${API_BASE}/courses/${editingCourse.id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify(form),
-        });
-        setSnackbar({ open: true, message: 'Course updated', severity: 'success' });
-      }
-      setDialogOpen(false);
-      void fetchCourses();
-    }
-    catch {
-      setSnackbar({ open: true, message: 'Failed to save course', severity: 'error' });
-    }
-  };
-
   const handleSaveTrack = async () => {
     try {
       if (dialogMode === 'create') {
@@ -330,26 +299,6 @@ export function SysAdminPage() {
     }
   };
 
-  const handleDeleteCourse = async (id: string) => {
-    try {
-      const res = await fetch(`${API_BASE}/courses/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        setSnackbar({ open: true, message: 'Course deleted', severity: 'success' });
-        void fetchCourses();
-      }
-      else {
-        const err = await res.json() as { error: string };
-        setSnackbar({ open: true, message: err.error || 'Failed to delete', severity: 'error' });
-      }
-    }
-    catch {
-      setSnackbar({ open: true, message: 'Failed to delete course', severity: 'error' });
-    }
-  };
-
   const handleEvaluate = async () => {
     try {
       const result = await api.post<EligibilityResult>('/rules/evaluate', evalForm, token);
@@ -358,28 +307,6 @@ export function SysAdminPage() {
     catch {
       setSnackbar({ open: true, message: 'Evaluation failed', severity: 'error' });
     }
-  };
-
-  const openCourseDialog = (mode: 'create' | 'edit', course?: Course) => {
-    setDialogType('course');
-    setDialogMode(mode);
-    if (mode === 'edit' && course) {
-      setEditingCourse(course);
-      setForm({
-        name: course.name,
-        code: course.code,
-        credits: course.credits,
-        track_id: course.track?.id || '',
-        is_integrator_exam: course.is_integrator_exam,
-        is_active: course.is_active,
-        order_index: course.order_index,
-      });
-    }
-    else {
-      setEditingCourse(null);
-      setForm({ name: '', code: '', credits: 4, track_id: '', is_integrator_exam: false, is_active: true, order_index: 0 });
-    }
-    setDialogOpen(true);
   };
 
   const openTrackDialog = (mode: 'create' | 'edit', track?: Track) => {
@@ -410,8 +337,7 @@ export function SysAdminPage() {
   };
 
   const handleSave = () => {
-    if (dialogType === 'course') { void handleSaveCourse(); }
-    else if (dialogType === 'track') { void handleSaveTrack(); }
+    if (dialogType === 'track') { void handleSaveTrack(); }
   };
 
   // ========== rule handlers ==========
@@ -621,65 +547,7 @@ export function SysAdminPage() {
       )}
 
       {!loading && tab === 'courses' && (
-        <Card>
-          <CardContent>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography variant="h6">
-                Courses (
-                {courses.length}
-                )
-              </Typography>
-              <Box sx={{ display: 'flex', gap: 1 }}>
-                <Button variant="contained" size="small" startIcon={<AddIcon />} onClick={() => { openCourseDialog('create'); }}>
-                  New Course
-                </Button>
-                <Button variant="outlined" size="small" startIcon={<RefreshIcon />} onClick={() => { setLoading(true); void fetchCourses(); }}>
-                  Refresh
-                </Button>
-              </Box>
-            </Box>
-            <TableContainer>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Name</TableCell>
-                    <TableCell>Code</TableCell>
-                    <TableCell>Track</TableCell>
-                    <TableCell>Credits</TableCell>
-                    <TableCell>Order</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell align="right">Actions</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {courses.map(c => (
-                    <TableRow key={c.id}>
-                      <TableCell>
-                        {c.name}
-                        {c.is_integrator_exam && <Chip label="Integrator" color="secondary" size="small" sx={{ ml: 1 }} />}
-                      </TableCell>
-                      <TableCell>{c.code}</TableCell>
-                      <TableCell>{c.track?.name || '-'}</TableCell>
-                      <TableCell>{c.credits}</TableCell>
-                      <TableCell>{c.order_index}</TableCell>
-                      <TableCell>
-                        <Chip label={c.is_active ? 'Active' : 'Inactive'} color={c.is_active ? 'success' : 'default'} size="small" />
-                      </TableCell>
-                      <TableCell align="right">
-                        <IconButton size="small" onClick={() => { openCourseDialog('edit', c); }}>
-                          <EditIcon fontSize="small" />
-                        </IconButton>
-                        <IconButton size="small" color="error" onClick={() => { void handleDeleteCourse(c.id); }}>
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </CardContent>
-        </Card>
+        <CourseManagement onSnackbar={(msg, severity) => setSnackbar({ open: true, message: msg, severity })} />
       )}
 
       {!loading && tab === 'tracks' && (
@@ -950,43 +818,14 @@ export function SysAdminPage() {
         </Grid>
       )}
 
-      {/* Course / Track / Evaluate shared dialog */}
+      {/* Track / Evaluate shared dialog */}
       <Dialog open={dialogOpen} onClose={() => { setDialogOpen(false); }} maxWidth="sm" fullWidth>
         <DialogTitle>
-          {dialogType === 'course' && dialogMode === 'create' && 'New Course'}
-          {dialogType === 'course' && dialogMode === 'edit' && 'Edit Course'}
           {dialogType === 'track' && dialogMode === 'create' && 'New Track'}
           {dialogType === 'track' && dialogMode === 'edit' && 'Edit Track'}
           {dialogType === 'evaluate' && 'Evaluate Eligibility'}
         </DialogTitle>
         <DialogContent>
-          {dialogType === 'course' && (
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
-              <TextField label="Name" value={form.name} onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))} fullWidth />
-              <TextField label="Code" value={form.code} onChange={e => setForm(prev => ({ ...prev, code: e.target.value }))} fullWidth />
-              <TextField label="Credits" type="number" value={form.credits} onChange={e => setForm(prev => ({ ...prev, credits: Number(e.target.value) }))} fullWidth />
-              <TextField label="Order Index" type="number" value={form.order_index} onChange={e => setForm(prev => ({ ...prev, order_index: Number(e.target.value) }))} fullWidth />
-              <TextField label="Track" select value={form.track_id} onChange={e => setForm(prev => ({ ...prev, track_id: e.target.value }))} fullWidth>
-                {tracks.map(t => (
-                  <MenuItem key={t.id} value={t.id}>
-                    {t.name}
-                    {' '}
-                    (
-                    {t.code}
-                    )
-                  </MenuItem>
-                ))}
-              </TextField>
-              <TextField label="Integrator Exam" select value={String(form.is_integrator_exam)} onChange={e => setForm(prev => ({ ...prev, is_integrator_exam: e.target.value === 'true' }))} fullWidth>
-                <MenuItem value="true">Yes</MenuItem>
-                <MenuItem value="false">No</MenuItem>
-              </TextField>
-              <TextField label="Active" select value={String(form.is_active)} onChange={e => setForm(prev => ({ ...prev, is_active: e.target.value === 'true' }))} fullWidth>
-                <MenuItem value="true">Active</MenuItem>
-                <MenuItem value="false">Inactive</MenuItem>
-              </TextField>
-            </Box>
-          )}
           {dialogType === 'track' && (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
               <TextField label="Name" value={trackForm.name} onChange={e => setTrackForm(prev => ({ ...prev, name: e.target.value }))} fullWidth />
@@ -1013,7 +852,7 @@ export function SysAdminPage() {
         </DialogContent>
         <DialogActions>
           <Button startIcon={<CancelIcon />} onClick={() => { setDialogOpen(false); }}>Cancel</Button>
-          {(dialogType === 'course' || dialogType === 'track') && (
+          {dialogType === 'track' && (
             <Button variant="contained" startIcon={dialogMode === 'create' ? <AddIcon /> : <EditIcon />} onClick={() => { void handleSave(); }}>
               {dialogMode === 'create' ? 'Create' : 'Save'}
             </Button>
