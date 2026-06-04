@@ -11,6 +11,7 @@ import { authRoutes } from './routes/auth';
 import { certificatesRoutes } from './routes/certificates';
 import { coordinatorRoutes } from './routes/coordinator';
 import { coursesRoutes } from './routes/courses';
+import { cronRoutes } from './routes/cron';
 import { enrollmentsRoutes } from './routes/enrollments';
 import { integrationsRoutes } from './routes/integrations';
 import { notificationsRoutes } from './routes/notifications';
@@ -139,6 +140,7 @@ app.route('/api/v1/rules', rulesRoutes);
 app.route('/api/v1/overrides', overridesRoutes);
 app.route('/api/v1/integrations', integrationsRoutes);
 app.route('/api/v1/notifications', notificationsRoutes);
+app.route('/api/v1/cron', cronRoutes);
 app.route('/api/v1/admin', adminRoutes);
 app.route('/api/v1/system', systemRoutes);
 

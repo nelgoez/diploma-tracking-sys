@@ -3,5 +3,11 @@
   "bunVersion": "1.x",
   "buildCommand": "bun install",
   "installCommand": "bun install",
-  "rewrites": [{ "source": "/(.*)", "destination": "/api/index" }]
+  "rewrites": [{ "source": "/(.*)", "destination": "/api/index" }],
+  "crons": [
+    {
+      "path": "/api/v1/cron/expire-overrides",
+      "schedule": "0 0 * * *"
+    }
+  ]
 }
