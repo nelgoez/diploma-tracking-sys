@@ -1,4 +1,4 @@
-import { supabase } from '../db/supabase';
+import { supabaseAdmin as supabase } from '../db/supabase';
 
 type IntegrationType = 'moodle' | 'guarani';
 type SyncStatus = 'success' | 'error' | 'pending';

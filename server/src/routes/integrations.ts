@@ -66,6 +66,31 @@ integrations.post('/sync/moodle', requireRole('admin', 'sysadmin'), async (c) =>
 
   const auth = c.get('auth');
   const startedAt = Date.now();
+
+  const moodleHealth = await moodleService.healthCheck();
+  if (moodleHealth.status !== 'connected') {
+    syncLocks.delete(SYNC_KEY);
+    return c.json({
+      error: 'Moodle no está accesible',
+      detail: moodleHealth.message || 'Verificá el token y la conectividad',
+      status_code: moodleHealth.status,
+    }, 503);
+  }
+
+  const { count: activeStudents } = await supabase
+    .from('students')
+    .select('*', { count: 'exact', head: true })
+    .eq('is_active', true)
+    .eq('role', 'estudiante');
+
+  if (!activeStudents) {
+    syncLocks.delete(SYNC_KEY);
+    return c.json({
+      error: 'No hay estudiantes activos para sincronizar',
+      detail: 'Asegurate de que existan estudiantes con role=estudiante e is_active=true',
+    }, 400);
+  }
+
   const logId = await logSyncStart('moodle', auth?.userId || 'system');
 
   try {
