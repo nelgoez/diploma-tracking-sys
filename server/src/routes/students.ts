@@ -76,17 +76,22 @@ students.get('/:id', async (c) => {
 
 students.get('/:id/progress', async (c) => {
   const auth = c.get('auth');
-  const { id } = c.req.param();
+  let { id } = c.req.param();
 
+  // For students, resolve their real student ID from email — auth UUID ≠ student UUID
   if (auth.role === 'estudiante') {
     const { data: ownStudent } = await supabaseAdmin
       .from('students')
       .select('id')
       .eq('email', auth.email)
       .single();
-    if (!ownStudent || ownStudent.id !== id) {
-      return c.json({ error: 'Forbidden' }, 403);
+    if (!ownStudent) {
+      return c.json({ error: 'Student not found' }, 404);
     }
+    id = ownStudent.id;
+  }
+  else if (auth.role !== 'admin' && auth.role !== 'sysadmin' && auth.role !== 'coordinador') {
+    return c.json({ error: 'Forbidden' }, 403);
   }
 
   const { data: student } = await supabaseAdmin
@@ -166,7 +171,7 @@ students.get('/:id/progress', async (c) => {
 
 students.get('/:id/certificates', async (c) => {
   const auth = c.get('auth');
-  const { id } = c.req.param();
+  let { id } = c.req.param();
 
   if (auth.role === 'estudiante') {
     const { data: ownStudent } = await supabaseAdmin
@@ -174,9 +179,10 @@ students.get('/:id/certificates', async (c) => {
       .select('id')
       .eq('email', auth.email)
       .single();
-    if (!ownStudent || ownStudent.id !== id) {
-      return c.json({ error: 'Forbidden' }, 403);
+    if (!ownStudent) {
+      return c.json({ error: 'Student not found' }, 404);
     }
+    id = ownStudent.id;
   }
 
   const { data, error } = await supabaseAdmin

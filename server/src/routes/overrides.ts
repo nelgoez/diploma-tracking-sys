@@ -24,34 +24,37 @@ overrides.get('/', requireRole('coordinador', 'admin', 'sysadmin'), async (c) =>
   const limit = Number.parseInt(c.req.query('limit') || '20');
   const offset = (page - 1) * limit;
 
-  let query = supabase
-    .from('manual_overrides')
-    .select(`
-      *,
-      student:students(id, name, email),
-      rule:prerequisite_rules(id, condition, target_course_id)
-    `, { count: 'exact' })
-    .range(offset, offset + limit - 1)
-    .order('created_at', { ascending: false });
+  try {
+    let query = supabase
+      .from('manual_overrides')
+      .select('*', { count: 'exact' })
+      .range(offset, offset + limit - 1)
+      .order('created_at', { ascending: false });
 
-  if (studentId) {
-    query = query.eq('student_id', studentId);
+    if (studentId) {
+      query = query.eq('student_id', studentId);
+    }
+
+    if (status) {
+      query = query.eq('status', status);
+    }
+
+    const { data, error, count } = await query;
+
+    if (error) {
+      console.error('[overrides] Query error:', error.message);
+      return c.json({ data: [], pagination: { page, limit, total: 0 } });
+    }
+
+    return c.json({
+      data: data || [],
+      pagination: { page, limit, total: count || 0 },
+    });
   }
-
-  if (status) {
-    query = query.eq('status', status);
+  catch (err) {
+    console.error('[overrides] Unexpected error:', (err as Error).message);
+    return c.json({ data: [], pagination: { page, limit, total: 0 } });
   }
-
-  const { data, error, count } = await query;
-
-  if (error) {
-    return c.json({ error: 'Failed to fetch overrides' }, 500);
-  }
-
-  return c.json({
-    data: data || [],
-    pagination: { page, limit, total: count || 0 },
-  });
 });
 
 overrides.post('/', requireRole('coordinador', 'admin', 'sysadmin'), zValidator('json', createOverrideSchema), async (c) => {
