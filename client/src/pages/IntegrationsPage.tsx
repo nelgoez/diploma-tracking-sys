@@ -33,25 +33,45 @@ interface IntegrationStatus {
 }
 
 const mapStatus = (raw: string | null | undefined): 'ok' | 'warning' | 'error' => {
-  if (!raw) return 'warning';
-  if (raw === 'connected' || raw === 'ok') return 'ok';
-  if (raw === 'disconnected') return 'warning';
-  if (raw === 'error') return 'error';
+  if (!raw) { return 'warning'; }
+  if (raw === 'connected' || raw === 'ok') { return 'ok'; }
+  if (raw === 'disconnected') { return 'warning'; }
+  if (raw === 'error') { return 'error'; }
   return 'warning';
 };
+
+const STATUS_TIMEOUT_MS = 15000;
 
 export function IntegrationsPage() {
   const { t } = useTranslation();
   const [status, setStatus] = useState<IntegrationStatus | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [syncing, setSyncing] = useState<{ moodle: boolean, guarani: boolean }>({ moodle: false, guarani: false });
   const [syncError, setSyncError] = useState<string | null>(null);
 
   const fetchStatus = async () => {
     const token = localStorage.getItem('token') || '';
+    setLoadError(null);
     try {
-      const data = await api.get<IntegrationStatus>('/integrations/status', token);
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), STATUS_TIMEOUT_MS);
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1'}/integrations/status`, {
+        headers: { Authorization: `Bearer ${token}` },
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
+      if (!res.ok) { throw new Error(`Status ${res.status}`); }
+      const data = await res.json() as IntegrationStatus;
       setStatus(data);
+    }
+    catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        setLoadError('La página tardó demasiado en cargar. Los servicios externos (Moodle, Guaraní) pueden estar lentos.');
+      }
+      else {
+        setLoadError(err instanceof Error ? err.message : 'Error al cargar estado');
+      }
     }
     finally {
       setLoading(false);
@@ -71,7 +91,12 @@ export function IntegrationsPage() {
       await fetchStatus();
     }
     catch (err) {
-      setSyncError(err instanceof Error ? err.message : 'Sync failed');
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        setSyncError('Sincronización abortada — posiblemente excedió el tiempo límite del servidor. Verificá la conectividad con Moodle/Guaraní.');
+      }
+      else {
+        setSyncError(err instanceof Error ? err.message : 'Sync failed');
+      }
     }
     finally {
       setSyncing(prev => ({ ...prev, [integration]: false }));
@@ -106,8 +131,20 @@ export function IntegrationsPage() {
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', p: 3, gap: 2 }}>
         <CircularProgress />
+        <Typography variant="body2" color="text.secondary">Consultando servicios externos...</Typography>
+      </Box>
+    );
+  }
+
+  if (loadError && !status) {
+    return (
+      <Box>
+        <Typography variant="h4" gutterBottom>{t('nav.integrations')}</Typography>
+        <Alert severity="warning" action={<Button size="small" onClick={() => { setLoading(true); void fetchStatus(); }}>Reintentar</Button>}>
+          {loadError}
+        </Alert>
       </Box>
     );
   }
@@ -117,6 +154,10 @@ export function IntegrationsPage() {
       <Typography variant="h4" gutterBottom>
         {t('nav.integrations')}
       </Typography>
+
+      {loadError && (
+        <Alert severity="warning" sx={{ mb: 2 }} onClose={() => setLoadError(null)}>{loadError}</Alert>
+      )}
 
       <Grid container spacing={3}>
         {syncError && (

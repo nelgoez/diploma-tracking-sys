@@ -15,24 +15,29 @@ const integrations = new Hono();
 integrations.use('/*', authenticate);
 
 integrations.get('/status', requireRole('admin', 'sysadmin'), async (c) => {
-  const moodleHealth = await moodleService.healthCheck();
-  const guaraniHealth = await guaraniService.healthCheck();
+  const [moodleHealth, guaraniHealth] = await Promise.all([
+    moodleService.healthCheck(),
+    guaraniService.healthCheck(),
+  ]);
 
-  const { data: moodleLogs } = await supabase
-    .from('integration_logs')
-    .select('*')
-    .eq('integration_type', 'moodle')
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  const { data: guaraniLogs } = await supabase
-    .from('integration_logs')
-    .select('*')
-    .eq('integration_type', 'guarani')
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const [moodleLogs, guaraniLogs] = await Promise.all([
+    supabase
+      .from('integration_logs')
+      .select('*')
+      .eq('integration_type', 'moodle')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+      .then(r => r.data),
+    supabase
+      .from('integration_logs')
+      .select('*')
+      .eq('integration_type', 'guarani')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+      .then(r => r.data),
+  ]);
 
   return c.json({
     demo: process.env.MOCK_MODE === 'true',
