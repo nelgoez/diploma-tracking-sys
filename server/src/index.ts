@@ -31,10 +31,10 @@ app.use('*', logger());
 app.use('*', prettyJSON());
 app.use('*', cors({
   origin: (origin) => {
-    const allowed = process.env.CORS_ORIGIN || 'http://localhost:5173';
-    if (!origin) { return allowed; }
-    if (origin.endsWith('.vercel.app') || origin === allowed) { return origin; }
-    return allowed;
+    const origins = (process.env.CORS_ORIGIN || 'http://localhost:5173').split(',').map(s => s.trim());
+    if (!origin) { return origins[0]; }
+    if (origin.endsWith('.vercel.app') || origins.includes(origin)) { return origin; }
+    return origins[0];
   },
   credentials: true,
 }));
