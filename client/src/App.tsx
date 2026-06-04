@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 
 import { MainLayout } from './components/layout/MainLayout';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { SessionManager } from './components/SessionManager';
 import { AdminPage } from './pages/AdminPage';
 import { CertificatesPage } from './pages/CertificatesPage';
 import { CoursesPage } from './pages/CoursesPage';
@@ -14,6 +15,7 @@ import { SysAdminPage } from './pages/SysAdminPage';
 export default function App() {
   return (
     <>
+      <SessionManager />
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/qa" element={<QAPage />} />
