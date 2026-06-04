@@ -1,6 +1,6 @@
 import { supabaseAdmin } from '../db/supabase';
 import { createEligibilityDataAccess } from './eligibility-data-access';
-import { upsertEligibilityNotification } from './notification.service';
+import { createNotification, upsertEligibilityNotification } from './notification.service';
 import { evaluateTrackEligibility } from './rule-engine';
 
 interface ExpiryRunResult {
@@ -62,6 +62,15 @@ export async function expireOverrides(): Promise<ExpiryRunResult> {
       }
 
       result.expired++;
+
+      createNotification({
+        studentId: override.student_id,
+        type: 'override_expired',
+        title: 'Excepción vencida',
+        body: 'La excepción aplicada a tu trayecto ha vencido. Esto puede afectar tu habilitación.',
+        entityType: 'manual_overrides',
+        entityId: override.id,
+      }).catch(err => console.error(`[OverrideScheduler] Expired notification failed for override ${override.id}:`, err));
 
       await supabaseAdmin.from('audit_log').insert({
         user_id: null,

@@ -5,6 +5,7 @@ import { authenticate, requireRole } from '../middleware/auth';
 import { logAudit } from '../services/audit-log';
 import { createEligibilityDataAccess } from '../services/eligibility-data-access';
 import { guaraniService } from '../services/guarani.service';
+import { createNotification } from '../services/notification.service';
 import { evaluateTrackEligibility } from '../services/rule-engine';
 
 const enrollments = new Hono<{ Variables: HonoVariables }>();
@@ -343,6 +344,17 @@ enrollments.put('/:id/grade', requireRole('coordinador', 'admin', 'sysadmin'), a
       },
     });
   }
+
+  createNotification({
+    studentId: data.student_id,
+    type: 'exam_graded',
+    title: grade >= 4 ? `Examen aprobado — Nota: ${grade}` : `Examen desaprobado — Nota: ${grade}`,
+    body: grade >= 4
+      ? '¡Felicitaciones! Aprobaste el examen integrador.'
+      : 'No alcanzaste la nota mínima. Podés reinscribirte en la próxima fecha.',
+    entityType: 'enrollment',
+    entityId: id,
+  }).catch(err => console.error('[enrollments] Grade notification failed:', err));
 
   return c.json(data);
 });

@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { supabaseAdmin as supabase } from '../db/supabase';
 import { authenticate, requireRole } from '../middleware/auth';
 import { logAudit } from '../services/audit-log';
+import { createNotification } from '../services/notification.service';
 
 const overrides = new Hono<{ Variables: HonoVariables }>();
 
@@ -98,6 +99,15 @@ overrides.post('/', requireRole('coordinador', 'admin', 'sysadmin'), zValidator(
     details: { student_id, rule_id, reason, expires_at: expires_at ?? null },
   });
 
+  createNotification({
+    studentId: student_id,
+    type: 'override_applied',
+    title: 'Excepción aplicada por coordinador',
+    body: `Se aplicó una excepción a tu trayecto. Motivo: ${reason}${expires_at ? `. Vence: ${new Date(expires_at).toLocaleDateString()}` : ''}`,
+    entityType: 'manual_override',
+    entityId: override.id,
+  }).catch(err => console.error('[overrides] Notification creation failed:', err));
+
   return c.json(override, 201);
 });
 
@@ -139,6 +149,17 @@ overrides.put('/:id/revoke', requireRole('coordinador', 'admin', 'sysadmin'), as
     entityType: 'manual_override',
     entityId: id,
   });
+
+  if (override.student_id) {
+    createNotification({
+      studentId: override.student_id,
+      type: 'override_applied',
+      title: 'Excepción revocada por coordinador',
+      body: 'Se revocó la excepción aplicada a tu trayecto. Esto puede afectar tu habilitación.',
+      entityType: 'manual_override',
+      entityId: id,
+    }).catch(err => console.error('[overrides] Revoke notification failed:', err));
+  }
 
   return c.json(override);
 });
