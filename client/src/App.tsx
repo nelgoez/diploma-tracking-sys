@@ -5,6 +5,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { SessionManager } from './components/SessionManager';
 import { AdminPage } from './pages/AdminPage';
 import { CertificatesPage } from './pages/CertificatesPage';
+import { CoordinatorPage } from './pages/CoordinatorPage';
 import { CoursesPage } from './pages/CoursesPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { IntegrationsPage } from './pages/IntegrationsPage';
@@ -32,6 +33,14 @@ export default function App() {
           <Route path="certificates" element={<CertificatesPage />} />
           <Route path="courses" element={<CoursesPage />} />
           <Route path="integrations" element={<IntegrationsPage />} />
+          <Route
+            path="coordinator"
+            element={(
+              <ProtectedRoute allowedRoles={['coordinador', 'admin', 'sysadmin']}>
+                <CoordinatorPage />
+              </ProtectedRoute>
+            )}
+          />
           <Route
             path="admin"
             element={(

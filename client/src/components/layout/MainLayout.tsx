@@ -1,6 +1,7 @@
 import {
   AdminPanelSettings as AdminIcon,
   School as CertificatesIcon,
+  SupervisorAccount as CoordinatorIcon,
   MenuBook as CoursesIcon,
   Dashboard as DashboardIcon,
   Link as IntegrationsIcon,
@@ -39,6 +40,7 @@ const navItems: NavItem[] = [
   { path: '/certificates', labelKey: 'nav.certificates', icon: CertificatesIcon },
   { path: '/courses', labelKey: 'nav.courses', icon: CoursesIcon },
   { path: '/integrations', labelKey: 'nav.integrations', icon: IntegrationsIcon },
+  { path: '/coordinator', labelKey: 'nav.coordinator', icon: CoordinatorIcon, roles: ['coordinador', 'admin', 'sysadmin'] },
   { path: '/admin', labelKey: 'nav.admin', icon: AdminIcon, roles: ['admin', 'sysadmin'] },
   { path: '/sysadmin', labelKey: 'nav.sysadmin', icon: AdminIcon, roles: ['sysadmin'] },
 ];

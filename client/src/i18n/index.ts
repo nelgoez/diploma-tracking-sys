@@ -13,6 +13,7 @@ const es: Translations = {
   'nav.enrollment': 'Inscripción',
   'nav.rules': 'Reglas',
   'nav.integrations': 'Integraciones',
+  'nav.coordinator': 'Coordinación',
   'nav.admin': 'Administración',
   'nav.sysadmin': 'SysAdmin',
   'nav.settings': 'Configuración',
@@ -129,7 +130,7 @@ const es: Translations = {
   'grade_exam.load_error': 'Error al cargar inscripciones',
   'grade_exam.no_enrollment_selected': 'No se seleccionó ninguna inscripción',
   'grade_exam.record_grade_error': 'Error al registrar la calificación',
-  'grade_exam.helper_text': "Solo se muestran inscripciones en estado 'inscripto'",
+  'grade_exam.helper_text': 'Solo se muestran inscripciones en estado \'inscripto\'',
   'grade_exam.enter_integer': 'Ingrese un entero entre 1 y 10',
   'grade_exam.close': 'Cerrar',
 };
@@ -143,6 +144,7 @@ const en: Translations = {
   'nav.enrollment': 'Enrollment',
   'nav.rules': 'Rules',
   'nav.integrations': 'Integrations',
+  'nav.coordinator': 'Coordination',
   'nav.admin': 'Administration',
   'nav.sysadmin': 'SysAdmin',
   'nav.settings': 'Settings',
@@ -259,7 +261,7 @@ const en: Translations = {
   'grade_exam.load_error': 'Failed to load enrollments',
   'grade_exam.no_enrollment_selected': 'No enrollment selected',
   'grade_exam.record_grade_error': 'Failed to record grade',
-  'grade_exam.helper_text': "Only enrollments with 'inscripto' status are shown",
+  'grade_exam.helper_text': 'Only enrollments with \'inscripto\' status are shown',
   'grade_exam.enter_integer': 'Enter an integer from 1 to 10',
   'grade_exam.close': 'Close',
 };
