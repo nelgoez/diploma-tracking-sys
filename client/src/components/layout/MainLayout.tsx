@@ -23,6 +23,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { LanguageSwitcher } from '../LanguageSwitcher';
+import { NotificationPopover } from '../NotificationPopover';
 
 const drawerWidth = 240;
 
@@ -89,6 +90,7 @@ export function MainLayout() {
             {t('app.title')}
           </Typography>
           <LanguageSwitcher />
+          <NotificationPopover />
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, ml: 2, mr: 2 }}>
             <Typography variant="body2" sx={{ opacity: 0.9 }} data-testid="user-name">
               {userName}
