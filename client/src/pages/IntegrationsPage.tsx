@@ -236,7 +236,9 @@ export function IntegrationsPage() {
 
               {mapStatus(status?.guarani.status) !== 'ok' && (
                 <Alert severity={mapStatus(status?.guarani.status) === 'error' ? 'error' : 'warning'} sx={{ mb: 2 }}>
-                  {t('integration.sync_errors', { count: status?.guarani.errors ?? 0 })}
+                  {status?.guarani.status === 'disconnected'
+                    ? 'Guaraní no está configurado — falta el token de acceso (GUARANI_TOKEN).'
+                    : t('integration.sync_errors', { count: status?.guarani.errors ?? 0 })}
                 </Alert>
               )}
 
