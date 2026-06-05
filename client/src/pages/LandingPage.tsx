@@ -233,7 +233,7 @@ export function LandingPage() {
       {!isMobile && (
         <AppBar position="static" color="transparent" elevation={0} sx={{ bgcolor: 'transparent' }}>
           <Toolbar>
-            <Typography variant="h6" sx={{ flexGrow: 1, color: 'text.primary', fontWeight: 600 }}>
+            <Typography variant="h6" sx={{ flexGrow: 1, textAlign: 'center', color: 'text.primary', fontWeight: 600 }}>
               Sistema de Gestión de Diplomas
             </Typography>
             <Button color="primary" onClick={() => { window.location.href = '/login'; }}>
