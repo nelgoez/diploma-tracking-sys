@@ -323,6 +323,18 @@ function Footer() {
         <Typography variant="caption" sx={{ opacity: 0.7 }}>
           {t('landing.footer_built')}
         </Typography>
+        <Typography variant="caption" sx={{ display: 'block', mt: 1, opacity: 0.5 }}>
+          Powered by
+          {' '}
+          <a
+            href="https://github.com/nelgoez"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: 'inherit' }}
+          >
+            @nelgoez
+          </a>
+        </Typography>
       </Container>
     </Box>
   );

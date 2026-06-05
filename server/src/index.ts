@@ -73,7 +73,7 @@ p { color:#94a3b8;line-height:1.7;margin-bottom:12px }
 <body>
 <div class="card">
 <h1>🎓 Diploma Tracking System</h1>
-<div class="badge">${isDemo ? 'Modo Demo — Mock' : 'Producción'} · UNC</div>
+<div class="badge">${isDemo ? 'Modo Demo — Mock' : 'Producción'}</div>
 <p>Sistema de seguimiento de diplomaturas con integración Moodle y SIU Guaraní. Motor de reglas de equivalencias, panel de progreso estudiantil, y gestión de exámenes integradores.</p>
 ${isDemo ? '<p style="color:#fbbf24">⚠️ <strong>Modo demo:</strong> integraciones con Moodle y Guaraní funcionan con datos simulados. Solicitar credenciales reales a la DTI para activar producción.</p>' : ''}
 <div class="grid">
@@ -88,7 +88,7 @@ ${isDemo ? '<p style="color:#fbbf24">⚠️ <strong>Modo demo:</strong> integrac
 <a class="alt" href="/api/v1/admin/dashboard-stats">Dashboard</a>
 <a class="alt" href="/api/v1/integrations/status">Integrations</a>
 </div>
-<div class="foot">Universidad Nacional de Córdoba · ${now}</div>
+<div class="foot">Servicios Universitarios · ${now}</div>
 </div>
 </body>
 </html>`);

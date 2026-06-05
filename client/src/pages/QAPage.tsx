@@ -39,7 +39,7 @@ export function QAPage() {
         Software Testability Guide for QA
       </Typography>
       <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
-        Diploma Tracking System (DTS) — Universidad Nacional de Córdoba
+        Diploma Tracking System (DTS) — Servicios Universitarios
       </Typography>
 
       {/* 1. Architecture Overview */}
