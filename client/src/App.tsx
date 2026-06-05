@@ -9,6 +9,7 @@ import { CoordinatorPage } from './pages/CoordinatorPage';
 import { CoursesPage } from './pages/CoursesPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { IntegrationsPage } from './pages/IntegrationsPage';
+import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './pages/LoginPage';
 import { QAPage } from './pages/QAPage';
 import { SysAdminPage } from './pages/SysAdminPage';
@@ -18,17 +19,18 @@ export default function App() {
     <>
       <SessionManager />
       <Routes>
+        <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/qa" element={<QAPage />} />
         <Route
-          path="/"
+          path="/app"
           element={(
             <ProtectedRoute>
               <MainLayout />
             </ProtectedRoute>
           )}
         >
-          <Route index element={<Navigate to="/dashboard" replace />} />
+          <Route index element={<Navigate to="/app/dashboard" replace />} />
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="certificates" element={<CertificatesPage />} />
           <Route path="courses" element={<CoursesPage />} />
@@ -58,7 +60,7 @@ export default function App() {
             )}
           />
         </Route>
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        <Route path="*" element={<Navigate to="/app/dashboard" replace />} />
       </Routes>
     </>
   );

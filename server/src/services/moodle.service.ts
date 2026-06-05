@@ -337,6 +337,15 @@ class MoodleServiceImpl implements MoodleService, CertificateProvider {
       return { certificates: [], certificatesNew: 0, certificatesUpdated: 0, affectedStudentIds: [], studentCertDetails: [] };
     }
 
+    const { data: mappedCourses } = await supabaseAdmin
+      .from('courses')
+      .select('id, moodle_course_id')
+      .not('moodle_course_id', 'is', null);
+    const moodleToLocal = new Map<string, string>();
+    for (const c of mappedCourses || []) {
+      if (c.moodle_course_id) { moodleToLocal.set(c.moodle_course_id, c.id); }
+    }
+
     const results: MoodleCertificate[] = [];
     const BATCH_SIZE = process.env.VERCEL ? 5 : 50;
     let totalProcessed = 0;
@@ -360,9 +369,21 @@ class MoodleServiceImpl implements MoodleService, CertificateProvider {
           const certs = await this.fetchCertificates(student.id);
           totalProcessed++;
 
-          if (certs.length === 0) { continue; }
+          const mappedCerts = certs
+            .map((cert) => {
+              const moodleIdnumber = cert.metadata?.moodleIdnumber as string | undefined;
+              const localCourseId = moodleIdnumber ? moodleToLocal.get(moodleIdnumber) : undefined;
+              if (!localCourseId) {
+                console.warn(`[MoodleService] No local course mapping for Moodle course idnumber="${moodleIdnumber || 'unknown'}" (${cert.courseName}). Add moodle_course_id to courses table.`);
+                return null;
+              }
+              return { ...cert, courseId: localCourseId };
+            })
+            .filter((c): c is Certificate => c !== null);
 
-          const certRows = certs.map(cert => ({
+          if (mappedCerts.length === 0) { continue; }
+
+          const certRows = mappedCerts.map(cert => ({
             student_id: cert.studentId,
             course_id: cert.courseId,
             moodle_certificate_id: cert.externalId ?? null,

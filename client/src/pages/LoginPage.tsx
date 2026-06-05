@@ -36,7 +36,7 @@ export function LoginPage() {
       localStorage.setItem('userRole', response.user.role);
       localStorage.setItem('userName', response.user.name);
 
-      void navigate('/dashboard');
+      void navigate('/app/dashboard');
     }
     catch (err) {
       setError(err instanceof Error ? err.message : t('login.error'));

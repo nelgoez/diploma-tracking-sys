@@ -36,13 +36,13 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { path: '/dashboard', labelKey: 'nav.dashboard', icon: DashboardIcon },
-  { path: '/certificates', labelKey: 'nav.certificates', icon: CertificatesIcon },
-  { path: '/courses', labelKey: 'nav.courses', icon: CoursesIcon },
-  { path: '/integrations', labelKey: 'nav.integrations', icon: IntegrationsIcon },
-  { path: '/coordinator', labelKey: 'nav.coordinator', icon: CoordinatorIcon, roles: ['coordinador', 'admin', 'sysadmin'] },
-  { path: '/admin', labelKey: 'nav.admin', icon: AdminIcon, roles: ['admin', 'sysadmin'] },
-  { path: '/sysadmin', labelKey: 'nav.sysadmin', icon: AdminIcon, roles: ['sysadmin'] },
+  { path: '/app/dashboard', labelKey: 'nav.dashboard', icon: DashboardIcon },
+  { path: '/app/certificates', labelKey: 'nav.certificates', icon: CertificatesIcon },
+  { path: '/app/courses', labelKey: 'nav.courses', icon: CoursesIcon },
+  { path: '/app/integrations', labelKey: 'nav.integrations', icon: IntegrationsIcon },
+  { path: '/app/coordinator', labelKey: 'nav.coordinator', icon: CoordinatorIcon, roles: ['coordinador', 'admin', 'sysadmin'] },
+  { path: '/app/admin', labelKey: 'nav.admin', icon: AdminIcon, roles: ['admin', 'sysadmin'] },
+  { path: '/app/sysadmin', labelKey: 'nav.sysadmin', icon: AdminIcon, roles: ['sysadmin'] },
 ];
 
 const roleLabels: Record<string, string> = {
@@ -81,7 +81,7 @@ export function MainLayout() {
     localStorage.removeItem('userId');
     localStorage.removeItem('userRole');
     localStorage.removeItem('userName');
-    void navigate('/login');
+    void navigate('/');
   };
 
   return (

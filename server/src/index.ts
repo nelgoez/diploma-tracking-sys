@@ -34,7 +34,7 @@ app.use('*', cors({
   origin: (origin) => {
     const origins = (process.env.CORS_ORIGIN || 'http://localhost:5173').split(',').map(s => s.trim());
     if (!origin) { return origins[0]; }
-    if (origin.endsWith('.vercel.app') || origins.includes(origin)) { return origin; }
+    if (origin.endsWith('.vercel.app') || origin.endsWith('.qzz.io') || origins.includes(origin)) { return origin; }
     return origins[0];
   },
   credentials: true,

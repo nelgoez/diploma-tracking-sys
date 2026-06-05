@@ -16,14 +16,38 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../lib/api';
 
-interface Certificate {
+interface CertificateResponse {
   id: string
-  course_name: string
-  student_name?: string
-  student_email?: string
+  student_id: string
+  course_id: string
   issue_date: string
   status: 'approved' | 'pending' | 'rejected'
   qualification: number | null
+  is_valid: boolean
+  student?: { id: string, name: string, email: string }
+  course?: { id: string, name: string, code: string, credits: number }
+}
+
+interface Certificate {
+  id: string
+  courseName: string
+  studentName?: string
+  studentEmail?: string
+  issueDate: string
+  status: 'approved' | 'pending' | 'rejected'
+  qualification: number | null
+}
+
+function mapResponse(certs: CertificateResponse[]): Certificate[] {
+  return certs.map(c => ({
+    id: c.id,
+    courseName: c.course?.name ?? c.id,
+    studentName: c.student?.name,
+    studentEmail: c.student?.email,
+    issueDate: c.issue_date,
+    status: c.status,
+    qualification: c.qualification,
+  }));
 }
 
 export function CertificatesPage() {
@@ -42,13 +66,19 @@ export function CertificatesPage() {
 
       if (claims.role === 'admin' || claims.role === 'coordinador' || claims.role === 'sysadmin') {
         setIsStaff(true);
-        setCertificates([]);
+        try {
+          const data = await api.get<CertificateResponse[]>('/certificates', token);
+          setCertificates(mapResponse(data));
+        }
+        catch {
+          setCertificates([]);
+        }
       }
       else {
         setIsStaff(false);
         try {
-          const data = await api.get<Certificate[]>(`/students/${userId}/certificates`, token);
-          setCertificates(data);
+          const data = await api.get<CertificateResponse[]>(`/students/${userId}/certificates`, token);
+          setCertificates(mapResponse(data));
         }
         catch {
           setCertificates([]);
@@ -68,27 +98,6 @@ export function CertificatesPage() {
       default: return 'default';
     }
   };
-
-  if (isStaff) {
-    return (
-      <Box>
-        <Typography variant="h4" gutterBottom>{t('nav.certificates')}</Typography>
-        <Card>
-          <CardContent>
-            <Box sx={{ textAlign: 'center', p: 4 }}>
-              <Typography variant="h6" color="text.secondary" gutterBottom>
-                System Certificate Management
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                As an administrator, you can view and manage all student certificates.
-                Navigate to the Admin Panel or SysAdmin Panel to search for specific students and their certificates.
-              </Typography>
-            </Box>
-          </CardContent>
-        </Card>
-      </Box>
-    );
-  }
 
   return (
     <Box>
@@ -115,6 +124,7 @@ export function CertificatesPage() {
                     <Table>
                       <TableHead>
                         <TableRow>
+                          {isStaff && <TableCell>Student</TableCell>}
                           <TableCell>{t('table.course')}</TableCell>
                           <TableCell>{t('table.date')}</TableCell>
                           <TableCell>{t('table.qualification')}</TableCell>
@@ -124,8 +134,20 @@ export function CertificatesPage() {
                       <TableBody>
                         {certificates.map(cert => (
                           <TableRow key={cert.id}>
-                            <TableCell>{cert.course_name}</TableCell>
-                            <TableCell>{new Date(cert.issue_date).toLocaleDateString()}</TableCell>
+                            {isStaff && (
+                              <TableCell>
+                                <Typography variant="body2" fontWeight={500}>
+                                  {cert.studentName || cert.studentEmail || '-'}
+                                </Typography>
+                                {cert.studentEmail && cert.studentName && (
+                                  <Typography variant="caption" color="text.secondary">
+                                    {cert.studentEmail}
+                                  </Typography>
+                                )}
+                              </TableCell>
+                            )}
+                            <TableCell>{cert.courseName}</TableCell>
+                            <TableCell>{new Date(cert.issueDate).toLocaleDateString()}</TableCell>
                             <TableCell>{cert.qualification ?? '-'}</TableCell>
                             <TableCell>
                               <Chip

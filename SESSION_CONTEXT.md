@@ -2,8 +2,8 @@
 
 > **Purpose:** Context file for resuming AI sessions
 > **Created:** 2026-04-27
-> **Last Updated:** 2026-06-02
-> **Status:** Phase 1-5 Complete, Phase 6 Notifications + Dashboard Implemented
+> **Last Updated:** 2026-06-04
+> **Status:** MVP Complete — 30/30 stories + QA Audit + Notifications UI + Dashboard/Courses Fixes
 
 ---
 
@@ -444,5 +444,68 @@ Phase 6 (notifications, override scheduler, Guaraní sync, coordinator dashboard
 
 ---
 
-**Last Updated:** 2026-06-02
+## Session Log — 2026-06-04: QA Audit + Production Fixes + Final Polish
+
+### QA Audit Findings (3 sub-agents)
+
+QA Engineer (certificates) + QA Engineer (integrations) + PO (business impact) audited production.
+
+**P1 - Certificates invisible for staff**: `CertificatesPage.tsx` blocked admin/coordinator/sysadmin — set `certificates=[]` instead of calling API. DB had only 4 certs (2 students).
+
+**P1 - Sync never works**: 6 root causes identified:
+
+1. `integration-logs.ts` used anon Supabase client → RLS blocked writes → logs always empty
+2. `MOODLE_API_TOKEN` on Vercel was placeholder → Moodle health showed "token inválida"
+3. No pre-flight checks → sync "completed" silently with 0 results
+4. Token is user-scoped (nelthor) → `core_user_get_users_by_field` returns empty for cross-user lookup
+5. Client had no AbortError handling → "signal is aborted" raw message
+6. Vercel Hobby 10s timeout risk (latent, masked by 0 students)
+
+### Fixes Applied
+
+- ✅ `CertificatesPage.tsx`: staff now fetches GET /certificates with mapResponse()
+- ✅ `integration-logs.ts`: `import { supabase }` → `import { supabaseAdmin as supabase }`
+- ✅ `integrations.ts`: pre-flight health check + active student count gate
+- ✅ `integrations.ts`: parallelized health checks (Promise.all) — 26s → 15s
+- ✅ `IntegrationsPage.tsx`: 15s timeout on status fetch, AbortError → friendly message, retry button
+- ✅ `MOODLE_API_TOKEN` pushed to Vercel production (`e7fe62e377593713e8ccd71c690055df`)
+- ✅ DB seeded: 27 certificates across 6 active students (was 4 certs)
+
+### Additional Fixes (Dashboard + Courses)
+
+- ✅ `DashboardPage.tsx`: removed AdminStatsGrid from non-student view. Compact 4-KPI row + quick actions + role description.
+- ✅ `AdminPage.tsx`: added Courses tab with CourseManagement shared component
+- ✅ `SysAdminPage.tsx`: replaced inline courses tab with CourseManagement. Removed dead code (handleSaveCourse, handleDeleteCourse, openCourseDialog, form state, editingCourse)
+- ✅ `CourseManagement.tsx`: new shared component — full CRUD with dialog, delete confirmation, active-only track filter
+
+### Jira Tracking
+
+- DTS-9: Epic Done (description updated, QA audit comment added)
+- DTS-26: Sync infrastructure fixes (Done)
+- DTS-27: Certificates seeding + UI fix (Done)
+- DTS-28: Dashboard redundancy fix (Done)
+- DTS-29: Admin courses CRUD (Done)
+- DTS-30: Notifications UI (Done)
+
+### Verification
+
+- ✅ Playwright @prod: 7/7 passed
+- ✅ `tsc --noEmit` server: 0 errors
+- ✅ `tsc --noEmit` client: 0 errors
+- ✅ Moodle health: "connected — Campus Virtual UNC"
+- ✅ Certificates API: 27 records returned
+- ✅ Sync logs: writing and readable (empty before fix)
+- ✅ Certificates UI: visible for admin/coordinator/sysadmin
+- ✅ Integrations page: 15s timeout, friendly error, retry button
+
+### Known Limitations
+
+- Moodle token is user-scoped (nelthor). Cannot perform cross-user lookup via `core_user_get_users_by_field`.
+  Sync processes 0 students because no student in DB matches the token owner's email lookup path.
+  **Fix**: obtain admin-scoped Moodle web service token from UNC IT (Settings -> Site Administration -> Plugins -> Web Services -> Manage Tokens)
+
+---
+
+**Last Updated:** 2026-06-04
+**Version:** 0.8.0 (QA Audit + Production Fixes + Full Jira Tracking)
 **Version:** 0.7.0 (Phase 5 closed + Phase 6 implemented)

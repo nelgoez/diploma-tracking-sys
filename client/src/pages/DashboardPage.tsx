@@ -99,7 +99,7 @@ export function DashboardPage() {
       try {
         await fetchStudentData();
       }
-      catch (_err) {
+      catch {
         setProgress({
           student_id: localStorage.getItem('userId') || 'unknown',
           courses_completed: 2,
@@ -243,7 +243,7 @@ export function DashboardPage() {
                 <Button
                   variant="outlined"
                   startIcon={<AdminIcon />}
-                  href="/admin"
+                  href="/app/admin"
                 >
                   {t('nav.admin')}
                 </Button>
@@ -252,7 +252,7 @@ export function DashboardPage() {
                 <Button
                   variant="outlined"
                   startIcon={<CategoryIcon />}
-                  href="/sysadmin"
+                  href="/app/sysadmin"
                 >
                   System Admin
                 </Button>
@@ -260,7 +260,7 @@ export function DashboardPage() {
               <Button
                 variant="outlined"
                 startIcon={<SchoolIcon />}
-                href="/courses"
+                href="/app/courses"
               >
                 {t('nav.courses')}
               </Button>

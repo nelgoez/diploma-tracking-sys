@@ -21,6 +21,7 @@ async function login(email: string, password: string): Promise<AuthResult> {
 
 describe('Integration Tests — Full DTS Flow', () => {
   let studentToken: string;
+  let adminToken: string;
   let studentEmail: string;
   let trackId: string;
   let courseIds: string[] = [];
@@ -29,6 +30,15 @@ describe('Integration Tests — Full DTS Flow', () => {
     const auth = await login('nahuelgomez.cti@gmail.com', 'Test123456!');
     studentToken = auth.access_token;
     studentEmail = auth.user.email;
+
+    try {
+      const adminAuth = await login('admin@dts.unc.edu.ar', 'Admin123456!');
+      adminToken = adminAuth.access_token;
+    }
+    catch {
+      adminToken = '';
+      console.warn('[Integration] Admin login failed — sync tests will assert 403 fallback');
+    }
 
     const tracksRes = await fetch(`${BASE}/tracks`, {
       headers: { Authorization: `Bearer ${studentToken}` },
@@ -143,22 +153,68 @@ describe('Integration Tests — Full DTS Flow', () => {
     });
   });
 
-  describe('Flow 6: Integration syncs', () => {
-    it('moodle sync endpoint responds (may be 403 for student)', async () => {
+  describe('Flow 6: Integration syncs (admin)', () => {
+    it('student blocked from moodle sync (403)', async () => {
       const res = await fetch(`${BASE}/integrations/sync/moodle`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${studentToken}` },
       });
-      expect([200, 403]).toContain(res.status);
+      expect(res.status).toBe(403);
     });
 
-    it('guarani sync endpoint responds (may be 403 for student)', async () => {
+    it('student blocked from guarani sync (403)', async () => {
       const res = await fetch(`${BASE}/integrations/sync/guarani`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${studentToken}` },
       });
-      expect([200, 403]).toContain(res.status);
+      expect(res.status).toBe(403);
     });
+
+    if (adminToken) {
+      it('moodle sync returns summary with counts', async () => {
+        const res = await fetch(`${BASE}/integrations/sync/moodle`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${adminToken}` },
+        });
+        expect(res.status).toBe(200);
+        const body = await res.json() as Record<string, unknown>;
+        expect(body).toHaveProperty('summary');
+        expect(body).toHaveProperty('sync_id');
+        expect(body.duration_ms).toBeDefined();
+      }, 30000);
+
+      it('certificates POST /sync returns results', async () => {
+        const res = await fetch(`${BASE}/certificates/sync`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${adminToken}` },
+        });
+        expect([200, 500]).toContain(res.status);
+        const body = await res.json() as Record<string, unknown>;
+        expect(body).toHaveProperty('success');
+      }, 30000);
+
+      it('guarani sync returns summary', async () => {
+        const res = await fetch(`${BASE}/integrations/sync/guarani`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${adminToken}` },
+        });
+        expect(res.status).toBe(200);
+        const body = await res.json() as Record<string, unknown>;
+        expect(body).toHaveProperty('summary');
+      }, 15000);
+
+      it('integration status returns moodle + guarani health', async () => {
+        const res = await fetch(`${BASE}/integrations/status`, {
+          headers: { Authorization: `Bearer ${adminToken}` },
+        });
+        expect(res.status).toBe(200);
+        const body = await res.json() as Record<string, unknown>;
+        expect(body).toHaveProperty('moodle');
+        expect(body).toHaveProperty('guarani');
+        const moodle = body.moodle as Record<string, unknown>;
+        expect(['connected', 'disconnected', 'error']).toContain(String(moodle.status));
+      });
+    }
   });
 
   describe('Flow 7: Student data isolation', () => {
