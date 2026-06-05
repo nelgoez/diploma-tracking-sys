@@ -300,7 +300,7 @@ class MoodleServiceImpl implements MoodleService, CertificateProvider {
       return {
         status: 'connected',
         latencyMs: Date.now() - startedAt,
-        message: 'Campus Virtual UNC (mock mode — demo)',
+        message: 'Campus Virtual (mock mode — demo)',
         lastChecked: new Date().toISOString(),
       };
     }

@@ -28,7 +28,11 @@ overrides.get('/', requireRole('coordinador', 'admin', 'sysadmin'), async (c) =>
   try {
     let query = supabase
       .from('manual_overrides')
-      .select('*', { count: 'exact' })
+      .select(`
+        *,
+        student:students!student_id(id, first_name, last_name, email),
+        rule:prerequisite_rules!rule_id(id, condition, target_course_id)
+      `, { count: 'exact' })
       .range(offset, offset + limit - 1)
       .order('created_at', { ascending: false });
 
