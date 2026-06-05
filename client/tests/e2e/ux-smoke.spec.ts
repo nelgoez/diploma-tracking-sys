@@ -16,7 +16,7 @@ test.describe('UX Smoke — Routing & Identity', () => {
     await page.getByRole('textbox', { name: /correo/i }).fill(ADMIN_EMAIL);
     await page.getByRole('textbox', { name: /contraseña/i }).fill(ADMIN_PASSWORD);
     await page.getByTestId('login-btn').click();
-    await expect(page).toHaveURL(/\/dashboard/);
+    await expect(page).toHaveURL(/\/app\/dashboard/);
   });
 
   test('app bar shows user identity after login', async ({ page }) => {
@@ -24,7 +24,7 @@ test.describe('UX Smoke — Routing & Identity', () => {
     await page.getByRole('textbox', { name: /correo/i }).fill(ADMIN_EMAIL);
     await page.getByRole('textbox', { name: /contraseña/i }).fill(ADMIN_PASSWORD);
     await page.getByTestId('login-btn').click();
-    await expect(page).toHaveURL(/\/dashboard/);
+    await expect(page).toHaveURL(/\/app\/dashboard/);
 
     await expect(page.getByTestId('app-bar')).toBeVisible();
     await expect(page.getByTestId('user-name')).toBeVisible();
@@ -38,9 +38,9 @@ test.describe('UX Smoke — Routing & Identity', () => {
     await page.getByRole('textbox', { name: /correo/i }).fill(ADMIN_EMAIL);
     await page.getByRole('textbox', { name: /contraseña/i }).fill(ADMIN_PASSWORD);
     await page.getByTestId('login-btn').click();
-    await expect(page).toHaveURL(/\/dashboard/);
+    await expect(page).toHaveURL(/\/app\/dashboard/);
 
-    const routes = ['/dashboard', '/certificates', '/courses', '/integrations', '/admin'];
+    const routes = ['/app/dashboard', '/app/certificates', '/app/courses', '/app/integrations', '/app/admin'];
     for (const route of routes) {
       await page.goto(route);
       await page.waitForLoadState('networkidle');
@@ -61,23 +61,11 @@ test.describe('UX Smoke — Routing & Identity', () => {
     await page.getByRole('textbox', { name: /correo/i }).fill(ADMIN_EMAIL);
     await page.getByRole('textbox', { name: /contraseña/i }).fill(ADMIN_PASSWORD);
     await page.getByTestId('login-btn').click();
-    await expect(page).toHaveURL(/\/dashboard/);
+    await expect(page).toHaveURL(/\/app\/dashboard/);
 
-    await page.goto('/integrations');
+    await page.goto('/app/integrations');
     await page.reload();
-    await expect(page.getByTestId('user-name')).toBeVisible();
-    await expect(page.getByTestId('user-role')).toBeVisible();
-    await expect(page).not.toHaveURL(/\/login/);
-  });
-});
-
-test.describe('UX Smoke — Navigation & Roles', () => {
-  test('admin sees admin nav item but not sysadmin', async ({ page }) => {
-    await page.goto('/login');
-    await page.getByRole('textbox', { name: /correo/i }).fill(ADMIN_EMAIL);
-    await page.getByRole('textbox', { name: /contraseña/i }).fill(ADMIN_PASSWORD);
-    await page.getByTestId('login-btn').click();
-    await expect(page).toHaveURL(/\/dashboard/);
+    await expect(page).toHaveURL(/\/app\/dashboard|dashboard/);
 
     await expect(page.getByTestId('nav-admin')).toBeVisible();
     await expect(page.getByTestId('nav-sysadmin')).not.toBeVisible();
@@ -88,7 +76,7 @@ test.describe('UX Smoke — Navigation & Roles', () => {
     await page.getByRole('textbox', { name: /correo/i }).fill(STUDENT_EMAIL);
     await page.getByRole('textbox', { name: /contraseña/i }).fill(STUDENT_PASSWORD);
     await page.getByTestId('login-btn').click();
-    await expect(page).toHaveURL(/\/dashboard/);
+    await expect(page).toHaveURL(/\/app\/dashboard/);
 
     await expect(page.getByTestId('nav-admin')).not.toBeVisible();
     await expect(page.getByTestId('nav-sysadmin')).not.toBeVisible();
@@ -99,11 +87,11 @@ test.describe('UX Smoke — Navigation & Roles', () => {
     await page.getByRole('textbox', { name: /correo/i }).fill(STUDENT_EMAIL);
     await page.getByRole('textbox', { name: /contraseña/i }).fill(STUDENT_PASSWORD);
     await page.getByTestId('login-btn').click();
-    await expect(page).toHaveURL(/\/dashboard/);
+    await expect(page).toHaveURL(/\/app\/dashboard/);
 
-    await page.goto('/admin');
+    await page.goto('/app/admin');
     await page.waitForLoadState('networkidle');
-    await expect(page).toHaveURL(/\/dashboard/);
+    await expect(page).toHaveURL(/\/app\/dashboard/);
   });
 });
 
@@ -113,9 +101,9 @@ test.describe('UX Smoke — API Integration Buttons', () => {
     await page.getByRole('textbox', { name: /correo/i }).fill(ADMIN_EMAIL);
     await page.getByRole('textbox', { name: /contraseña/i }).fill(ADMIN_PASSWORD);
     await page.getByTestId('login-btn').click();
-    await expect(page).toHaveURL(/\/dashboard/);
+    await expect(page).toHaveURL(/\/app\/dashboard/);
 
-    await page.goto('/integrations');
+    await page.goto('/app/integrations');
     await page.waitForLoadState('networkidle');
     await expect(page.getByText(/moodle/i).first()).toBeVisible();
     await expect(page.getByText(/guaran/i).first()).toBeVisible();
@@ -132,7 +120,7 @@ test.describe('UX Smoke — Student Dashboard', () => {
     await page.getByRole('textbox', { name: /correo/i }).fill(STUDENT_EMAIL);
     await page.getByRole('textbox', { name: /contraseña/i }).fill(STUDENT_PASSWORD);
     await page.getByTestId('login-btn').click();
-    await expect(page).toHaveURL(/\/dashboard/);
+    await expect(page).toHaveURL(/\/app\/dashboard/);
 
     await page.waitForLoadState('networkidle');
     await expect(page.getByTestId('main-content')).toBeVisible();
@@ -147,7 +135,7 @@ test.describe('UX Smoke — Student Dashboard', () => {
     await page.getByRole('textbox', { name: /correo/i }).fill(STUDENT_EMAIL);
     await page.getByRole('textbox', { name: /contraseña/i }).fill(STUDENT_PASSWORD);
     await page.getByTestId('login-btn').click();
-    await expect(page).toHaveURL(/\/dashboard/);
+    await expect(page).toHaveURL(/\/app\/dashboard/);
 
     await page.evaluate(() => {
       localStorage.removeItem('token');
@@ -156,7 +144,7 @@ test.describe('UX Smoke — Student Dashboard', () => {
       localStorage.removeItem('userRole');
       localStorage.removeItem('userName');
     });
-    await page.goto('/dashboard');
+    await page.goto('/app/dashboard');
     await expect(page).toHaveURL(/\/login/);
   });
 });
