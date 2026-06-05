@@ -234,7 +234,7 @@ export function LandingPage() {
         <AppBar position="static" color="transparent" elevation={0} sx={{ bgcolor: 'transparent' }}>
           <Toolbar>
             <Typography variant="h6" sx={{ flexGrow: 1, color: 'text.primary', fontWeight: 600 }}>
-              DTS
+              Sistema de Gestión de Diplomas
             </Typography>
             <Button color="primary" onClick={() => { window.location.href = '/login'; }}>
               Iniciar sesión
