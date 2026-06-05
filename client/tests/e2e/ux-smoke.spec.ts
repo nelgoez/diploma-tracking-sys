@@ -65,7 +65,7 @@ test.describe('UX Smoke — Routing & Identity', () => {
 
     await page.goto('/app/integrations');
     await page.reload();
-    await expect(page).toHaveURL(/\/app\/dashboard|dashboard/);
+    await expect(page).toHaveURL(/\/app\/integrations/);
 
     await expect(page.getByTestId('nav-admin')).toBeVisible();
     await expect(page.getByTestId('nav-sysadmin')).not.toBeVisible();
