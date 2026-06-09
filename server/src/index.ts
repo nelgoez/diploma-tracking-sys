@@ -105,20 +105,31 @@ app.get(
 );
 
 app.get('/api-spec', async (c) => {
-  const specPath = process.env.API_SPEC_PATH || '../../.context/SRS/api-contracts.yaml';
+  const envPath = process.env.API_SPEC_PATH;
+  const candidates = envPath
+    ? [envPath]
+    : [
+        '.context/SRS/api-contracts.yaml',
+        '../.context/SRS/api-contracts.yaml',
+        '../../.context/SRS/api-contracts.yaml',
+      ];
+
+  let file: Bun.BunFile | null = null;
+  for (const rel of candidates) {
+    const f = Bun.file(rel);
+    if (await f.exists()) { file = f; break; }
+  }
+
+  if (!file) {
+    console.warn(`[api-spec] Not found in: ${candidates.join(', ')}`);
+    return c.json({
+      openapi: '3.0.0',
+      info: { title: 'Diploma Tracking System API', version: '0.1.0' },
+      paths: {},
+    });
+  }
 
   try {
-    const file = Bun.file(specPath);
-    const exists = await file.exists();
-
-    if (!exists) {
-      return c.json({
-        openapi: '3.0.0',
-        info: { title: 'Diploma Tracking System API', version: '0.1.0' },
-        paths: {},
-      });
-    }
-
     const content = await file.text();
     return new Response(content, {
       headers: { 'Content-Type': 'text/yaml' },

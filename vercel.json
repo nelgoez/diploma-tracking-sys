@@ -1,5 +1,19 @@
 {
   "version": 2,
   "framework": "vite",
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "rewrites": [
+    {
+      "source": "/health",
+      "destination": "https://server-git-main-nelgoezs-projects.vercel.app/health"
+    },
+    {
+      "source": "/docs",
+      "destination": "https://server-git-main-nelgoezs-projects.vercel.app/docs"
+    },
+    {
+      "source": "/api-spec",
+      "destination": "https://server-git-main-nelgoezs-projects.vercel.app/api-spec"
+    },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
 }

@@ -5,16 +5,21 @@ import type {
 import type { ProviderHealth } from '../providers/certificate.provider';
 import { supabaseAdmin } from '../db/supabase';
 import { logPerStudent } from './integration-logs';
+import { getMockStudents } from './mock-data';
 import { withRetry } from './resilient-adapter';
 
 const GUARANI_URL = process.env.GUARANI_URL || 'https://guarani.unc.edu.ar/api';
 const GUARANI_TOKEN = process.env.GUARANI_TOKEN || '';
 
+function isMockMode(): boolean {
+  return process.env.MOCK_MODE === 'true';
+}
+
 export interface SyncResult {
   studentsProcessed: number
   studentsNew: number
   studentsUpdated: number
-  errors: Array<{ studentId: string; error: string }>
+  errors: Array<{ studentId: string, error: string }>
 }
 
 export interface DiplomaPushResult {
@@ -86,6 +91,11 @@ class GuaraniServiceImpl implements AcademicProvider {
   readonly providerName = 'guarani';
 
   async fetchStudents(): Promise<AcademicStudent[]> {
+    if (isMockMode()) {
+      console.log('[GuaraniService] Mock mode — returning demo students');
+      return getMockStudents();
+    }
+
     if (!isConfigured()) {
       console.warn('[GuaraniService] GUARANI_TOKEN not configured — returning empty list');
       return [];
@@ -95,13 +105,18 @@ class GuaraniServiceImpl implements AcademicProvider {
       const response = await guaraniFetch<{ data: GuaraniApiStudent[] } | GuaraniApiStudent[]>('/estudiantes');
       const raw = Array.isArray(response) ? response : (response as { data: GuaraniApiStudent[] }).data ?? [];
       return raw.map(mapToAcademicStudent);
-    } catch (err) {
+    }
+    catch (err) {
       console.error('[GuaraniService] fetchStudents failed:', (err as Error).message);
       return [];
     }
   }
 
   async fetchStudent(id: string): Promise<AcademicStudent | null> {
+    if (isMockMode()) {
+      return getMockStudents().find(s => s.id === id) ?? null;
+    }
+
     if (!isConfigured()) {
       return null;
     }
@@ -109,7 +124,8 @@ class GuaraniServiceImpl implements AcademicProvider {
     try {
       const student = await guaraniFetch<GuaraniApiStudent>(`/estudiantes/${id}`);
       return mapToAcademicStudent(student, 0);
-    } catch (err) {
+    }
+    catch (err) {
       console.error(`[GuaraniService] fetchStudent(${id}) failed:`, (err as Error).message);
       return null;
     }
@@ -117,6 +133,15 @@ class GuaraniServiceImpl implements AcademicProvider {
 
   async healthCheck(): Promise<ProviderHealth> {
     const startedAt = Date.now();
+
+    if (isMockMode()) {
+      return {
+        status: 'connected',
+        latencyMs: Date.now() - startedAt,
+        message: 'SIU Guaraní (mock mode — demo)',
+        lastChecked: new Date().toISOString(),
+      };
+    }
 
     if (!isConfigured()) {
       return {
@@ -134,7 +159,8 @@ class GuaraniServiceImpl implements AcademicProvider {
         latencyMs: Date.now() - startedAt,
         lastChecked: new Date().toISOString(),
       };
-    } catch (err) {
+    }
+    catch (err) {
       return {
         status: 'error',
         latencyMs: Date.now() - startedAt,
@@ -145,6 +171,69 @@ class GuaraniServiceImpl implements AcademicProvider {
   }
 
   async syncStudents(): Promise<SyncResult> {
+    if (isMockMode()) {
+      console.log('[GuaraniService] Mock mode — syncing demo students');
+      const allApiStudents = getMockStudents();
+      let studentsNew = 0;
+      let studentsUpdated = 0;
+      const errors: Array<{ studentId: string, error: string }> = [];
+
+      for (const s of allApiStudents) {
+        try {
+          const conditions: string[] = [];
+          if (s.email) { conditions.push(`email.eq.${s.email}`); }
+          if (s.documentNumber) { conditions.push(`dni.eq.${s.documentNumber}`); }
+          const orFilter = conditions.join(',');
+          if (!orFilter) { continue; }
+
+          const { data: existing } = await supabaseAdmin
+            .from('students')
+            .select('id')
+            .or(orFilter)
+            .maybeSingle();
+
+          const row = {
+            name: `${s.firstName} ${s.lastName}`,
+            email: s.email,
+            dni: s.documentNumber,
+            guarani_id: s.id,
+            role: 'estudiante' as const,
+            is_active: true,
+          };
+
+          if (existing) {
+            const { error } = await supabaseAdmin
+              .from('students')
+              .update(row)
+              .eq('id', existing.id);
+            if (error) { throw new Error(error.message); }
+            studentsUpdated++;
+            await logPerStudent('guarani', existing.id, 'success', 'Updated from Guaraní (mock)');
+          }
+          else {
+            const { error } = await supabaseAdmin
+              .from('students')
+              .upsert([row], { onConflict: 'email' });
+            if (error) { throw new Error(error.message); }
+            studentsNew++;
+          }
+        }
+        catch (err) {
+          errors.push({
+            studentId: s.id,
+            error: (err as Error).message,
+          });
+        }
+      }
+
+      console.log(
+        `[GuaraniService] Mock sync complete: ${allApiStudents.length} processed, `
+        + `${studentsNew} new, ${studentsUpdated} updated, ${errors.length} errors`,
+      );
+
+      return { studentsProcessed: allApiStudents.length, studentsNew, studentsUpdated, errors };
+    }
+
     if (!isConfigured()) {
       console.warn('[GuaraniService] GUARANI_TOKEN not configured — skipping sync');
       return { studentsProcessed: 0, studentsNew: 0, studentsUpdated: 0, errors: [] };
@@ -153,7 +242,7 @@ class GuaraniServiceImpl implements AcademicProvider {
     const allApiStudents = await this.fetchStudents();
     let studentsNew = 0;
     let studentsUpdated = 0;
-    const errors: Array<{ studentId: string; error: string }> = [];
+    const errors: Array<{ studentId: string, error: string }> = [];
 
     for (const s of allApiStudents) {
       try {
@@ -185,15 +274,17 @@ class GuaraniServiceImpl implements AcademicProvider {
             .eq('id', existing.id);
           if (error) { throw new Error(error.message); }
           studentsUpdated++;
-          await logPerStudent('guarani', existing.id, 'success', `Updated from Guaraní`);
-        } else {
+          await logPerStudent('guarani', existing.id, 'success', 'Updated from Guaraní');
+        }
+        else {
           const { error } = await supabaseAdmin
             .from('students')
             .upsert([row], { onConflict: 'email' });
           if (error) { throw new Error(error.message); }
           studentsNew++;
         }
-      } catch (err) {
+      }
+      catch (err) {
         errors.push({
           studentId: s.id,
           error: (err as Error).message,
@@ -203,8 +294,8 @@ class GuaraniServiceImpl implements AcademicProvider {
     }
 
     console.log(
-      `[GuaraniService] Sync complete: ${allApiStudents.length} processed, ` +
-      `${studentsNew} new, ${studentsUpdated} updated, ${errors.length} errors`,
+      `[GuaraniService] Sync complete: ${allApiStudents.length} processed, `
+      + `${studentsNew} new, ${studentsUpdated} updated, ${errors.length} errors`,
     );
 
     return {
@@ -219,7 +310,7 @@ class GuaraniServiceImpl implements AcademicProvider {
     const { data: enrollments } = await supabaseAdmin
       .from('enrollments')
       .select(
-        `id, status, qualification, exam_status, course_id, courses!inner (name)`,
+        'id, status, qualification, exam_status, course_id, courses!inner (name)',
       )
       .eq('student_id', studentId);
 

@@ -1,676 +1,1953 @@
-# API Contracts - Diploma Tracking System (OpenAPI 3.0)
+openapi: 3.0.3
+info:
+  title: Diploma Tracking System API
+  description: |
+    REST API for the Diploma Tracking System (DTS).
+    All endpoints are under the /api/v1 base path.
+    Provider abstraction is a cross-cutting concern — all external integrations
+    (Moodle, Guaraní) use the Provider Adapter pattern internally.
+  version: 1.0.0
+  contact:
+    name: DTS Development Team
+    url: https://diplomatrackingsystem.qzz.io
+servers:
+  - url: http://localhost:3000/api/v1
+    description: Local development
+  - url: https://server-git-main-nelgoezs-projects.vercel.app/api/v1
+    description: Production
 
-> Generated from: `.prompts/fase-2-architecture/srs-api-contracts.md`
-> Based on: Functional Specs + Architecture Specs
-> Status: Placeholder (APIs to be implemented in Fase 3)
+paths:
+  # ─── Health ──────────────────────────────────────────────────
+  /health:
+    get:
+      operationId: healthCheck
+      summary: Health check
+      tags: [Health]
+      responses:
+        '200':
+          description: System is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
 
----
-
-## Overview
-
-Este archivo define los contratos de API del sistema. Todas las APIs siguen REST con JSON payloads.
-
-### Base URL
-
-```
-Development: http://localhost:3000/api/v1
-Production: https://api.diploma-tracking.unc.edu.ar/api/v1
-```
-
-### Autenticación
-
-Todas las requests requieren header `Authorization: Bearer <token>`
-
-### Códigos de Error Comunes
-
-| Code | Meaning |
-|------|---------|
-| 400 | Bad Request - Datos inválidos |
-| 401 | Unauthorized - Token inválido/expirado |
-| 403 | Forbidden - Sin permisos |
-| 404 | Not Found - Recurso no existe |
-| 429 | Too Many Requests - Rate limit excedido |
-| 500 | Internal Server Error |
-
----
-
-## 1. Auth Endpoints
-
-### POST /auth/login
-
-**Descripción:** Iniciar sesión
-
-```yaml
-/auth/login:
-  post:
-    summary: Login de usuario
-    tags: [Auth]
-    requestBody:
-      required: true
-      content:
-        application/json:
-          schema:
-            type: object
-            required: [email, password]
-            properties:
-              email:
-                type: string
-                format: email
-              password:
-                type: string
-    responses:
-      '200':
-        description: Login exitoso
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                access_token:
-                  type: string
-                refresh_token:
-                  type: string
-                user:
-                  $ref: '#/components/schemas/User'
-      '401':
-        description: Credenciales inválidas
-```
-
-### POST /auth/refresh
-
-**Descripción:** Refrescar token
-
-```yaml
-/auth/refresh:
-  post:
-    summary: Refrescar access token
-    tags: [Auth]
-    requestBody:
-      required: true
-      content:
-        application/json:
-          schema:
-            type: object
-            required: [refresh_token]
-            properties:
-              refresh_token:
-                type: string
-    responses:
-      '200':
-        description: Token refrescado
-```
-
----
-
-## 2. Students Endpoints
-
-### GET /students
-
-```yaml
-/students:
-  get:
-    summary: Listar estudiantes (admin only)
-    tags: [Students]
-    security:
-      - bearerAuth: []
-    parameters:
-      - in: query
-        name: page
-        schema:
-          type: integer
-          default: 1
-      - in: query
-        name: limit
-        schema:
-          type: integer
-          default: 20
-      - in: query
-        name: status
-        schema:
-          type: string
-          enum: [active, inactive, at_risk, completed]
-      - in: query
-        name: search
-        schema:
-          type: string
-    responses:
-      '200':
-        description: Lista de estudiantes
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                data:
-                  type: array
-                  items:
-                    $ref: '#/components/schemas/Student'
-                pagination:
-                  $ref: '#/components/schemas/Pagination'
-```
-
-### GET /students/{id}/progress
-
-```yaml
-/students/{id}/progress:
-  get:
-    summary: Obtener progreso de estudiante
-    tags: [Students]
-    security:
-      - bearerAuth: []
-    parameters:
-      - in: path
-        name: id
+  # ─── Auth ──────────────────────────────────────────────────
+  /auth/login:
+    post:
+      operationId: authLogin
+      summary: Authenticate user
+      tags: [Auth]
+      requestBody:
         required: true
-        schema:
-          type: string
-          format: uuid
-    responses:
-      '200':
-        description: Progreso del estudiante
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Invalid credentials
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/refresh:
+    post:
+      operationId: authRefresh
+      summary: Refresh access token
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '200':
+          description: Token refreshed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/logout:
+    post:
+      operationId: authLogout
+      summary: Logout and revoke refresh token
+      tags: [Auth]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '200':
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+
+  /auth/me:
+    get:
+      operationId: authMe
+      summary: Get authenticated user profile
+      tags: [Auth]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ─── Students ──────────────────────────────────────────────
+  /students:
+    get:
+      operationId: listStudents
+      summary: List students (paginated)
+      tags: [Students]
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/pageSize'
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search by name or email (partial match)
+        - name: trackId
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Filter by track enrollment
+      responses:
+        '200':
+          description: Paginated student list
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/StudentSummary'
+
+  /students/{studentId}:
+    get:
+      operationId: getStudent
+      summary: Get student detail
+      tags: [Students]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: studentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Student detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StudentDetail'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /students/{studentId}/progress:
+    get:
+      operationId: getStudentProgress
+      summary: Get student progress for all enrolled tracks
+      tags: [Students]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: studentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Student progress data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TrackProgress'
+
+  /students/{studentId}/certificates:
+    get:
+      operationId: listStudentCertificates
+      summary: List certificates for a student
+      tags: [Students]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: studentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/pageSize'
+      responses:
+        '200':
+          description: Student certificate list
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Certificate'
+
+  # ─── Courses ───────────────────────────────────────────────
+  /courses:
+    get:
+      operationId: listCourses
+      summary: List all courses
+      tags: [Courses]
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/pageSize'
+        - name: trackId
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Filter by track
+      responses:
+        '200':
+          description: Paginated course list
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Course'
+
+  /courses/{courseId}:
+    get:
+      operationId: getCourse
+      summary: Get course detail
+      tags: [Courses]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: courseId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Course detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Course'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /courses/{courseId}/prerequisites:
+    get:
+      operationId: getCoursePrerequisites
+      summary: Get prerequisite rules for the track this course belongs to
+      tags: [Courses]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: courseId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Prerequisite rules for the parent track
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrerequisiteRulesResponse'
+
+  # ─── Certificates ─────────────────────────────────────────
+  /certificates:
+    get:
+      operationId: listCertificates
+      summary: List certificates (admin view)
+      tags: [Certificates]
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/pageSize'
+        - name: studentId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, error, pending]
+      responses:
+        '200':
+          description: Paginated certificate list
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Certificate'
+
+  /certificates/{certificateId}:
+    get:
+      operationId: getCertificate
+      summary: Get certificate detail
+      tags: [Certificates]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: certificateId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Certificate detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Certificate'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /certificates/sync:
+    post:
+      operationId: syncCertificates
+      summary: Trigger certificate sync batch from all configured LMS providers
+      tags: [Certificates]
+      security:
+        - BearerAuth: []
+      responses:
+        '202':
+          description: Sync initiated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncResponse'
+        '409':
+          description: Sync already in progress
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+
+  /certificates/{certificateId}/resync:
+    post:
+      operationId: resyncCertificate
+      summary: Re-sync a single certificate from its source provider
+      tags: [Certificates]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: certificateId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Certificate re-synced
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Certificate'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ─── Enrollments ───────────────────────────────────────────
+  /enrollments:
+    get:
+      operationId: listEnrollments
+      summary: List enrollments
+      tags: [Enrollments]
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/pageSize'
+        - name: trackId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, inactive, archived]
+      responses:
+        '200':
+          description: Paginated enrollment list
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Enrollment'
+
+    post:
+      operationId: createEnrollment
+      summary: Enroll a student in a track
+      tags: [Enrollments]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateEnrollmentRequest'
+      responses:
+        '201':
+          description: Enrollment created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Enrollment'
+        '409':
+          description: Student already enrolled
+          $ref: '#/components/responses/Conflict'
+
+  /enrollments/batch:
+    post:
+      operationId: batchEnroll
+      summary: Batch enroll students from CSV
+      tags: [Enrollments]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, trackId]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: CSV with email column (optionally name, surname)
+                trackId:
+                  type: string
+                  format: uuid
+      responses:
+        '200':
+          description: Batch enrollment processed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchEnrollmentResponse'
+
+  /enrollments/{enrollmentId}/grade:
+    put:
+      operationId: updateGrade
+      summary: Record exam grade for enrollment
+      tags: [Enrollments]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: enrollmentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GradeRequest'
+      responses:
+        '200':
+          description: Grade recorded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Enrollment'
+        '422':
+          description: Validation error
+          $ref: '#/components/responses/ValidationError'
+
+  /enrollments/eligibility/{studentId}:
+    get:
+      operationId: checkEligibility
+      summary: Check exam eligibility for a student across all tracks
+      tags: [Enrollments]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: studentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: trackId
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Optional — check eligibility for a specific track only
+      responses:
+        '200':
+          description: Eligibility evaluation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EligibilityResult'
+
+  # ─── Prerequisite Rules ─────────────────────────────────────
+  /rules:
+    get:
+      operationId: listRules
+      summary: List prerequisite rules
+      tags: [Rules]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: trackId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Rule tree for the track
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrerequisiteRulesResponse'
+
+    post:
+      operationId: createRule
+      summary: Create a new prerequisite rule
+      tags: [Rules]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRuleRequest'
+      responses:
+        '201':
+          description: Rule created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrerequisiteRule'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /rules/{ruleId}:
+    put:
+      operationId: updateRule
+      summary: Update a prerequisite rule
+      tags: [Rules]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: ruleId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateRuleRequest'
+      responses:
+        '200':
+          description: Rule updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrerequisiteRule'
+
+    delete:
+      operationId: deleteRule
+      summary: Delete a prerequisite rule
+      tags: [Rules]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: ruleId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Rule deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /rules/evaluate:
+    post:
+      operationId: evaluateRules
+      summary: Evaluate prerequisite rules for a student
+      tags: [Rules]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
         content:
           application/json:
             schema:
               type: object
+              required: [studentId, trackId]
               properties:
-                student_id:
+                studentId:
                   type: string
-                track_id:
+                  format: uuid
+                trackId:
                   type: string
-                courses_completed:
-                  type: integer
-                courses_total:
-                  type: integer
-                credits_accumulated:
-                  type: integer
-                credits_required:
-                  type: integer
-                progress_percentage:
-                  type: number
-                status:
-                  type: string
-                  enum: [at_risk, on_track, completed]
-                eligibility_status:
-                  $ref: '#/components/schemas/EligibilityStatus'
-```
+                  format: uuid
+      responses:
+        '200':
+          description: Evaluation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EligibilityResult'
 
----
+  # ─── Overrides ─────────────────────────────────────────────
+  /overrides:
+    get:
+      operationId: listOverrides
+      summary: List manual overrides
+      tags: [Overrides]
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/pageSize'
+        - name: studentId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, expired, revoked]
+      responses:
+        '200':
+          description: Paginated override list
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/ManualOverride'
 
-## 3. Courses Endpoints
-
-### GET /courses
-
-```yaml
-/courses:
-  get:
-    summary: Listar cursos
-    tags: [Courses]
-    security:
-      - bearerAuth: []
-    responses:
-      '200':
-        description: Lista de cursos
+    post:
+      operationId: createOverride
+      summary: Create a manual override
+      tags: [Overrides]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
         content:
           application/json:
             schema:
+              $ref: '#/components/schemas/CreateOverrideRequest'
+      responses:
+        '201':
+          description: Override created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManualOverride'
+
+  /overrides/{overrideId}:
+    delete:
+      operationId: revokeOverride
+      summary: Revoke a manual override
+      tags: [Overrides]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: overrideId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Override revoked
+
+  # ─── Integrations ──────────────────────────────────────────
+  /integrations/status:
+    get:
+      operationId: getIntegrationStatus
+      summary: Get health status for all configured providers
+      tags: [Integrations]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Integration status list
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  $ref: '#/components/schemas/ProviderStatus'
+
+  /integrations/sync/moodle:
+    post:
+      operationId: syncMoodle
+      summary: Trigger Moodle certificate sync
+      tags: [Integrations]
+      security:
+        - BearerAuth: []
+      responses:
+        '202':
+          description: Sync initiated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncResponse'
+
+  /integrations/sync/guarani:
+    post:
+      operationId: syncGuarani
+      summary: Trigger Guaraní student registry sync
+      tags: [Integrations]
+      security:
+        - BearerAuth: []
+      responses:
+        '202':
+          description: Sync initiated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncResponse'
+
+  /integrations/logs:
+    get:
+      operationId: getIntegrationLogs
+      summary: Get integration log entries
+      tags: [Integrations]
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/pageSize'
+        - name: provider
+          in: query
+          schema:
+            type: string
+            enum: [moodle, guarani]
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [success, error]
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Paginated integration log entries
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/IntegrationLogEntry'
+
+  # ─── Tracks (Diploma Programs) ────────────────────────────
+  /tracks:
+    get:
+      operationId: listTracks
+      summary: List all tracks
+      tags: [Tracks]
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/pageSize'
+      responses:
+        '200':
+          description: Paginated track list
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Track'
+
+    post:
+      operationId: createTrack
+      summary: Create a new track
+      tags: [Tracks]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTrackRequest'
+      responses:
+        '201':
+          description: Track created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Track'
+
+  /tracks/{trackId}:
+    get:
+      operationId: getTrack
+      summary: Get track detail
+      tags: [Tracks]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: trackId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Track detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Track'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      operationId: updateTrack
+      summary: Update track
+      tags: [Tracks]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: trackId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTrackRequest'
+      responses:
+        '200':
+          description: Track updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Track'
+
+  # ─── Admin ─────────────────────────────────────────────────
+  /admin/dashboard-stats:
+    get:
+      operationId: getAdminDashboardStats
+      summary: Get aggregate system metrics
+      tags: [Admin]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Dashboard statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminDashboardStats'
+
+  /admin/students:
+    get:
+      operationId: adminListStudents
+      summary: List all students (admin view)
+      tags: [Admin]
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/pageSize'
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: trackId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: eligibility
+          in: query
+          schema:
+            type: string
+            enum: [eligible, not_eligible]
+      responses:
+        '200':
+          description: Paginated student list
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/StudentSummary'
+
+  /admin/courses:
+    get:
+      operationId: adminListCourses
+      summary: List all courses (admin view)
+      tags: [Admin]
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/pageSize'
+        - name: trackId
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Paginated course list
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Course'
+
+  /admin/tracks:
+    get:
+      operationId: adminListTracks
+      summary: List all tracks (admin view)
+      tags: [Admin]
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/pageSize'
+      responses:
+        '200':
+          description: Paginated track list
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Track'
+
+  /admin/users:
+    post:
+      operationId: createUser
+      summary: Create a new user
+      tags: [Admin]
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '201':
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT access token. Obtain via POST /auth/login.
+        Expires in 15 minutes. Refresh via POST /auth/refresh.
+
+  parameters:
+    page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+      description: Page number (1-indexed)
+    pageSize:
+      name: pageSize
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+      description: Items per page
+
+  responses:
+    Unauthorized:
+      description: Authentication required or token expired
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Forbidden:
+      description: Insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Conflict:
+      description: Resource conflict (e.g. duplicate)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    ValidationError:
+      description: Request validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationErrorResponse'
+
+  schemas:
+    # ─── Common ────────────────────────────────────────────
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              example: UNAUTHORIZED
+            message:
+              type: string
+              example: Invalid or expired token
+            details:
+              description: Additional error context (optional)
+
+    ValidationErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              example: VALIDATION_ERROR
+            message:
+              type: string
+              example: Request validation failed
+            details:
               type: array
               items:
-                $ref: '#/components/schemas/Course'
-```
-
-### GET /courses/{id}/prerequisites
-
-```yaml
-/courses/{id}/prerequisites:
-  get:
-    summary: Obtener prerrequisitos de un curso
-    tags: [Courses]
-    security:
-      - bearerAuth: []
-    parameters:
-      - in: path
-        name: id
-        required: true
-        schema:
-          type: string
-    responses:
-      '200':
-        description: Prerrequisitos del curso
-```
-
----
-
-## 4. Certificates Endpoints
-
-### GET /certificates
-
-```yaml
-/certificates:
-  get:
-    summary: Listar certificados
-    tags: [Certificates]
-    security:
-      - bearerAuth: []
-    parameters:
-      - in: query
-        name: student_id
-        schema:
-          type: string
-      - in: query
-        name: status
-        schema:
-          type: string
-    responses:
-      '200':
-        description: Lista de certificados
-```
-
-### POST /certificates/sync
-
-```yaml
-/certificates/sync:
-  post:
-    summary: Sincronizar certificados desde Moodle
-    tags: [Certificates]
-    security:
-      - bearerAuth: []
-    responses:
-      '200':
-        description: Sync completado
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                synced:
-                  type: integer
-                errors:
-                  type: integer
-```
-
----
-
-## 5. Enrollments Endpoints
-
-### GET /enrollments/eligibility/{studentId}
-
-```yaml
-/enrollments/eligibility/{studentId}:
-  get:
-    summary: Verificar habilitación para examen final
-    tags: [Enrollments]
-    security:
-      - bearerAuth: []
-    parameters:
-      - in: path
-        name: studentId
-        required: true
-        schema:
-          type: string
-    responses:
-      '200':
-        description: Estado de habilitación
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                student_id:
-                  type: string
-                is_eligible:
-                  type: boolean
-                eligibility_type:
-                  type: string
-                  enum: [automatic, manual, none]
-                manual_override:
-                  type: object
-                  nullable: true
-                missing_prerequisites:
-                  type: array
-                  items:
+                type: object
+                properties:
+                  field:
                     type: string
-                reason:
-                  type: string
-                  nullable: true
-```
+                    example: exam_grade
+                  message:
+                    type: string
+                    example: Grade must be between 1 and 10
 
-### POST /enrollments
-
-```yaml
-/enrollments:
-  post:
-    summary: Inscribirse al examen final
-    tags: [Enrollments]
-    security:
-      - bearerAuth: []
-    requestBody:
-      required: true
-      content:
-        application/json:
-          schema:
-            type: object
-            required: [exam_date]
-            properties:
-              exam_date:
-                type: string
-                format: date
-              observations:
-                type: string
-    responses:
-      '201':
-        description: Inscripción exitosa
-      '400':
-        description: No habilitado
-```
-
-### PUT /enrollments/{id}/grade
-
-```yaml
-/enrollments/{id}/grade:
-  put:
-    summary: Registrar calificación (coordinador)
-    tags: [Enrollments]
-    security:
-      - bearerAuth: []
-    parameters:
-      - in: path
-        name: id
-        required: true
-        schema:
-          type: string
-    requestBody:
-      required: true
-      content:
-        application/json:
-          schema:
-            type: object
-            required: [qualification, status]
-            properties:
-              qualification:
-                type: number
-                minimum: 0
-                maximum: 10
-              status:
-                type: string
-                enum: [approved, disapproved, absent]
-              observations:
-                type: string
-    responses:
-      '200':
-        description: Calificación registrada
-```
-
----
-
-## 6. Rules Endpoints
-
-### GET /rules
-
-```yaml
-/rules:
-  get:
-    summary: Listar reglas de prerrequisitos
-    tags: [Rules]
-    security:
-      - bearerAuth: []
-    responses:
-      '200':
-        description: Lista de reglas
-```
-
-### POST /rules
-
-```yaml
-/rules:
-  post:
-    summary: Crear regla de prerrequisitos
-    tags: [Rules]
-    security:
-      - bearerAuth: []
-    requestBody:
-      required: true
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/PrerequisiteRule'
-    responses:
-      '201':
-        description: Regla creada
-```
-
-### POST /rules/evaluate
-
-```yaml
-/rules/evaluate:
-  post:
-    summary: Evaluar prerrequisitos para un estudiante
-    tags: [Rules]
-    security:
-      - bearerAuth: []
-    requestBody:
-      required: true
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              student_id:
-                type: string
-              target_course_id:
-                type: string
-    responses:
-      '200':
-        description: Resultado de evaluación
-```
-
----
-
-## 7. Integrations Endpoints
-
-### GET /integrations/status
-
-```yaml
-/integrations/status:
-  get:
-    summary: Ver estado de integraciones
-    tags: [Integrations]
-    security:
-      - bearerAuth: []
-    responses:
-      '200':
-        description: Estado de integraciones
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                moodle:
-                  $ref: '#/components/schemas/IntegrationStatus'
-                guarani:
-                  $ref: '#/components/schemas/IntegrationStatus'
-```
-
-### POST /integrations/sync/moodle
-
-```yaml
-/integrations/sync/moodle:
-  post:
-    summary: Forzar sync con Moodle
-    tags: [Integrations]
-    security:
-      - bearerAuth: []
-    responses:
-      '200':
-        description: Sync iniciado
-```
-
-### POST /integrations/sync/guarani
-
-```yaml
-/integrations/sync/guarani:
-  post:
-    summary: Forzar sync con Guaraní
-    tags: [Integrations]
-    security:
-      - bearerAuth: []
-    responses:
-      '200':
-        description: Sync iniciado
-```
-
----
-
-## 8. Admin Endpoints
-
-### GET /admin/dashboard-stats
-
-```yaml
-/admin/dashboard-stats:
-  get:
-    summary: Métricas del dashboard
-    tags: [Admin]
-    security:
-      - bearerAuth: []
-    responses:
-      '200':
-        description: Estadísticas
-```
-
----
-
-## Components
-
-### Schemas
-
-```yaml
-components:
-  schemas:
-    User:
+    MessageResponse:
       type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+          example: Operation completed
+
+    PaginatedResponse:
+      type: object
+      properties:
+        meta:
+          type: object
+          properties:
+            page:
+              type: integer
+              example: 1
+            pageSize:
+              type: integer
+              example: 20
+            total:
+              type: integer
+              example: 150
+            totalPages:
+              type: integer
+              example: 8
+
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded, error]
+        uptime:
+          type: integer
+          description: Server uptime in seconds
+        database:
+          type: string
+          enum: [ok, error]
+        providers:
+          type: object
+          additionalProperties:
+            type: string
+            enum: [ok, error, unknown]
+          example:
+            moodle: ok
+            guarani: unknown
+        timestamp:
+          type: string
+          format: date-time
+
+    # ─── Auth ──────────────────────────────────────────────
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          example: lucia.mendez@unc.edu.ar
+        password:
+          type: string
+          format: password
+          example: securePassword123
+
+    LoginResponse:
+      type: object
+      required: [accessToken, refreshToken, user]
+      properties:
+        accessToken:
+          type: string
+          description: JWT access token (expires in 15 min)
+        refreshToken:
+          type: string
+          description: JWT refresh token (expires in 7 days)
+        user:
+          $ref: '#/components/schemas/UserProfile'
+
+    RefreshRequest:
+      type: object
+      required: [refreshToken]
+      properties:
+        refreshToken:
+          type: string
+
+    UserProfile:
+      type: object
+      required: [id, email, role]
       properties:
         id:
           type: string
           format: uuid
         email:
           type: string
-        name:
+          format: email
+        firstName:
+          type: string
+        lastName:
           type: string
         role:
           type: string
           enum: [estudiante, coordinador, admin, sysadmin]
+        tracks:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              name:
+                type: string
+              role:
+                type: string
+                description: 'own track role: enrolled / coordinator'
 
-    Student:
+    # ─── Students ──────────────────────────────────────────
+    StudentSummary:
       type: object
       properties:
         id:
           type: string
-        guarani_id:
-          type: string
-        name:
-          type: string
+          format: uuid
         email:
           type: string
-        dni:
+          format: email
+        firstName:
           type: string
-        role:
+        lastName:
           type: string
-        is_active:
-          type: boolean
+        documentNumber:
+          type: string
+        tracks:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              name:
+                type: string
+              progress:
+                type: integer
+                description: Percentage 0-100
+              eligible:
+                type: boolean
 
+    StudentDetail:
+      allOf:
+        - $ref: '#/components/schemas/StudentSummary'
+        - type: object
+          properties:
+            certificates:
+              type: array
+              items:
+                $ref: '#/components/schemas/Certificate'
+            enrollments:
+              type: array
+              items:
+                $ref: '#/components/schemas/Enrollment'
+            overrides:
+              type: array
+              items:
+                $ref: '#/components/schemas/ManualOverride'
+
+    # ─── Track Progress ────────────────────────────────────
+    TrackProgress:
+      type: object
+      properties:
+        trackId:
+          type: string
+          format: uuid
+        trackName:
+          type: string
+        totalModules:
+          type: integer
+        completedModules:
+          type: integer
+        progressPercent:
+          type: integer
+        modules:
+          type: array
+          items:
+            $ref: '#/components/schemas/ModuleProgress'
+        eligibility:
+          $ref: '#/components/schemas/EligibilityResult'
+        nextSteps:
+          type: array
+          items:
+            $ref: '#/components/schemas/NextStep'
+
+    ModuleProgress:
+      type: object
+      properties:
+        courseId:
+          type: string
+          format: uuid
+        courseName:
+          type: string
+        status:
+          type: string
+          enum: [completed, in_progress, pending, error]
+        certificateId:
+          type: string
+          format: uuid
+          nullable: true
+
+    NextStep:
+      type: object
+      properties:
+        courseId:
+          type: string
+          format: uuid
+        courseName:
+          type: string
+        reason:
+          type: string
+          example: Prerequisites satisfied
+
+    # ─── Courses ───────────────────────────────────────────
     Course:
       type: object
       properties:
         id:
           type: string
+          format: uuid
+        trackId:
+          type: string
+          format: uuid
         name:
           type: string
         code:
           type: string
-        credits:
+        orderIndex:
           type: integer
-        is_integrator_exam:
-          type: boolean
 
+    # ─── Certificates ──────────────────────────────────────
     Certificate:
       type: object
       properties:
         id:
           type: string
-        student_id:
+          format: uuid
+        studentId:
           type: string
-        course_id:
+          format: uuid
+        courseId:
           type: string
-        issue_date:
+          format: uuid
+        provider:
           type: string
-          format: date
+          example: moodle
+        externalId:
+          type: string
+        issuedAt:
+          type: string
+          format: date-time
+        syncedAt:
+          type: string
+          format: date-time
         status:
           type: string
-        qualification:
-          type: number
+          enum: [active, error, pending]
+        errorMessage:
+          type: string
+          nullable: true
 
-    EligibilityStatus:
+    SyncResponse:
       type: object
       properties:
-        is_eligible:
+        syncId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [in_progress]
+        message:
+          type: string
+          example: Sync initiated
+
+    # ─── Enrollments ───────────────────────────────────────
+    Enrollment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        studentId:
+          type: string
+          format: uuid
+        trackId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [active, inactive, archived]
+        enrolledAt:
+          type: string
+          format: date-time
+        examStatus:
+          type: string
+          nullable: true
+          enum: [null, inscripto, aprobado, desaprobado, diploma_pendiente]
+        examDate:
+          type: string
+          format: date
+          nullable: true
+        examGrade:
+          type: number
+          nullable: true
+          example: 7.5
+        gradedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    CreateEnrollmentRequest:
+      type: object
+      required: [studentId, trackId]
+      properties:
+        studentId:
+          type: string
+          format: uuid
+        trackId:
+          type: string
+          format: uuid
+
+    GradeRequest:
+      type: object
+      required: [grade]
+      properties:
+        grade:
+          type: number
+          minimum: 1
+          maximum: 10
+          example: 7
+
+    BatchEnrollmentResponse:
+      type: object
+      properties:
+        total:
+          type: integer
+        created:
+          type: integer
+        enrolled:
+          type: integer
+        alreadyEnrolled:
+          type: integer
+        errors:
+          type: integer
+        errorDetails:
+          type: array
+          items:
+            type: object
+            properties:
+              row:
+                type: integer
+              email:
+                type: string
+              reason:
+                type: string
+
+    # ─── Eligibility ───────────────────────────────────────
+    EligibilityResult:
+      type: object
+      properties:
+        studentId:
+          type: string
+          format: uuid
+        trackId:
+          type: string
+          format: uuid
+        eligible:
           type: boolean
+        evaluatedAt:
+          type: string
+          format: date-time
+        rules:
+          type: array
+          items:
+            $ref: '#/components/schemas/RuleEvaluation'
+
+    RuleEvaluation:
+      type: object
+      properties:
+        ruleId:
+          type: string
+          format: uuid
         type:
           type: string
-        reason:
+          enum: [ALL, ANY]
+        description:
           type: string
+        fulfilled:
+          type: boolean
+        overridden:
+          type: boolean
+        overrideReason:
+          type: string
+          nullable: true
+        sources:
+          type: array
+          items:
+            $ref: '#/components/schemas/RuleSourceEvaluation'
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/RuleEvaluation'
+
+    RuleSourceEvaluation:
+      type: object
+      properties:
+        sourceType:
+          type: string
+          enum: [course, sub_rule]
+        courseId:
+          type: string
+          format: uuid
+          nullable: true
+        courseName:
+          type: string
+          nullable: true
+        fulfilled:
+          type: boolean
+        certificateId:
+          type: string
+          format: uuid
+          nullable: true
+
+    # ─── Prerequisite Rules ────────────────────────────────
+    PrerequisiteRulesResponse:
+      type: object
+      properties:
+        trackId:
+          type: string
+          format: uuid
+        rules:
+          type: array
+          items:
+            $ref: '#/components/schemas/PrerequisiteRule'
 
     PrerequisiteRule:
       type: object
       properties:
         id:
           type: string
-        target_course_id:
+          format: uuid
+        trackId:
           type: string
-        source_course_ids:
+          format: uuid
+        parentRuleId:
+          type: string
+          format: uuid
+          nullable: true
+        type:
+          type: string
+          enum: [ALL, ANY]
+        orderIndex:
+          type: integer
+        sources:
+          type: array
+          items:
+            $ref: '#/components/schemas/PrerequisiteSource'
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/PrerequisiteRule'
+
+    PrerequisiteSource:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        sourceType:
+          type: string
+          enum: [course, sub_rule]
+        courseId:
+          type: string
+          format: uuid
+          nullable: true
+        subRuleId:
+          type: string
+          format: uuid
+          nullable: true
+
+    CreateRuleRequest:
+      type: object
+      required: [trackId, type, sources]
+      properties:
+        trackId:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [ALL, ANY]
+        parentRuleId:
+          type: string
+          format: uuid
+          nullable: true
+        orderIndex:
+          type: integer
+        sources:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [sourceType]
+            properties:
+              sourceType:
+                type: string
+                enum: [course, sub_rule]
+              courseId:
+                type: string
+                format: uuid
+              subRule:
+                $ref: '#/components/schemas/CreateRuleRequest'
+                description: Nested sub-rule (only when sourceType=sub_rule)
+
+    UpdateRuleRequest:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [ALL, ANY]
+        orderIndex:
+          type: integer
+        sources:
+          type: array
+          items:
+            $ref: '#/components/schemas/PrerequisiteSource'
+
+    # ─── Manual Overrides ──────────────────────────────────
+    ManualOverride:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        studentId:
+          type: string
+          format: uuid
+        ruleId:
+          type: string
+          format: uuid
+        createdBy:
+          type: string
+          format: uuid
+        reason:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        status:
+          type: string
+          enum: [active, expired, revoked]
+        createdAt:
+          type: string
+          format: date-time
+
+    CreateOverrideRequest:
+      type: object
+      required: [studentId, ruleId, reason]
+      properties:
+        studentId:
+          type: string
+          format: uuid
+        ruleId:
+          type: string
+          format: uuid
+        reason:
+          type: string
+          minLength: 10
+          example: Certificado de curso equivalente — Universidad Nacional de La Plata 2025
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    # ─── Integrations ──────────────────────────────────────
+    ProviderStatus:
+      type: object
+      properties:
+        provider:
+          type: string
+          example: moodle
+        status:
+          type: string
+          enum: [connected, disconnected, error, unknown]
+        lastHealthCheck:
+          type: string
+          format: date-time
+          nullable: true
+        lastSync:
+          type: object
+          nullable: true
+          properties:
+            startedAt:
+              type: string
+              format: date-time
+            completedAt:
+              type: string
+              format: date-time
+            durationMs:
+              type: integer
+            certificatesProcessed:
+              type: integer
+            errors:
+              type: integer
+        latencyMs:
+          type: integer
+          nullable: true
+
+    IntegrationLogEntry:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        provider:
+          type: string
+          example: moodle
+        action:
+          type: string
+          example: sync_certificates
+        status:
+          type: string
+          enum: [success, error, retry]
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+        durationMs:
+          type: integer
+        studentsProcessed:
+          type: integer
+        studentsNew:
+          type: integer
+        studentsUpdated:
+          type: integer
+        errorsCount:
+          type: integer
+        errorDetails:
+          type: object
+          nullable: true
+        triggeredBy:
+          type: string
+          format: uuid
+          nullable: true
+          description: null = scheduled sync
+
+    # ─── Tracks ────────────────────────────────────────────
+    Track:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        organizationId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [active, inactive]
+        studentCount:
+          type: integer
+          description: Computed count of active enrollments
+        createdAt:
+          type: string
+          format: date-time
+
+    CreateTrackRequest:
+      type: object
+      required: [name, description]
+      properties:
+        name:
+          type: string
+          example: Diplomatura en Ciencia de Datos
+        description:
+          type: string
+        courses:
+          type: array
+          items:
+            type: object
+            required: [name]
+            properties:
+              name:
+                type: string
+              code:
+                type: string
+              orderIndex:
+                type: integer
+
+    UpdateTrackRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+          enum: [active, inactive]
+
+    # ─── Admin ─────────────────────────────────────────────
+    AdminDashboardStats:
+      type: object
+      properties:
+        totalStudents:
+          type: integer
+        activeStudents:
+          type: integer
+        totalTracks:
+          type: integer
+        totalCertificates:
+          type: integer
+        certificatesToday:
+          type: integer
+        eligibleStudents:
+          type: integer
+        notEligibleStudents:
+          type: integer
+        integrationStatus:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/ProviderStatus'
+        lastSyncSummary:
+          type: object
+          nullable: true
+          properties:
+            date:
+              type: string
+              format: date-time
+            durationMs:
+              type: integer
+            totalProcessed:
+              type: integer
+            errors:
+              type: integer
+
+    CreateUserRequest:
+      type: object
+      required: [email, firstName, lastName, role]
+      properties:
+        email:
+          type: string
+          format: email
+        firstName:
+          type: string
+        lastName:
+          type: string
+        role:
+          type: string
+          enum: [estudiante, coordinador, admin, sysadmin]
+        trackIds:
           type: array
           items:
             type: string
-        condition:
-          type: string
-          enum: [ALL, ANY]
-        is_active:
-          type: boolean
-
-    IntegrationStatus:
-      type: object
-      properties:
-        status:
-          type: string
-          enum: [ok, warning, error]
-        last_sync:
-          type: string
-          format: date-time
-        records_synced:
-          type: integer
-        errors:
-          type: integer
-
-    Pagination:
-      type: object
-      properties:
-        page:
-          type: integer
-        limit:
-          type: integer
-        total:
-          type: integer
-        pages:
-          type: integer
-
-  securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-```
-
----
-
-## Notes
-
-- **Placeholders:** Endpoints marked as placeholders to be implemented in Fase 3 (Infrastructure)
-- **Moodle/Guaraní APIs:** Real API documentation to be added when integrations are configured
-- **Generated by:** CLI script `bun run api:sync` (placeholder command)
+            format: uuid
+          description: Required for coordinador role — assigned tracks

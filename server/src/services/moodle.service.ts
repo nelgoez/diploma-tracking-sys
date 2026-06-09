@@ -4,6 +4,9 @@ import type {
   ProviderHealth,
 } from '../providers/certificate.provider';
 import { supabaseAdmin } from '../db/supabase';
+import { getMockCertificatesForStudent } from './mock-data';
+
+const isMockMode = (): boolean => process.env.MOCK_MODE === 'true';
 
 export interface MoodleCertificate {
   id: string
@@ -177,6 +180,11 @@ class MoodleServiceImpl implements MoodleService, CertificateProvider {
   }
 
   async fetchCertificates(studentId: string): Promise<Certificate[]> {
+    if (isMockMode()) {
+      console.log(`[MoodleService] Mock mode — returning demo certificates for student ${studentId}`);
+      return getMockCertificatesForStudent(studentId);
+    }
+
     const { data: student } = await supabaseAdmin
       .from('students')
       .select('email, name')
@@ -268,6 +276,7 @@ class MoodleServiceImpl implements MoodleService, CertificateProvider {
   }
 
   async validateCertificate(externalId: string): Promise<boolean> {
+    if (isMockMode()) { return true; }
     if (!externalId) { return false; }
 
     try {
@@ -296,7 +305,7 @@ class MoodleServiceImpl implements MoodleService, CertificateProvider {
       };
     }
 
-    if (process.env.MOCK_MODE === 'true') {
+    if (isMockMode()) {
       return {
         status: 'connected',
         latencyMs: Date.now() - startedAt,
@@ -344,6 +353,19 @@ class MoodleServiceImpl implements MoodleService, CertificateProvider {
     const moodleToLocal = new Map<string, string>();
     for (const c of mappedCourses || []) {
       if (c.moodle_course_id) { moodleToLocal.set(c.moodle_course_id, c.id); }
+    }
+
+    if (isMockMode()) {
+      const { data: allCourses } = await supabaseAdmin
+        .from('courses')
+        .select('id, code')
+        .not('code', 'is', null);
+      for (const c of allCourses || []) {
+        if (c.code && !moodleToLocal.has(c.code)) {
+          moodleToLocal.set(c.code, c.id);
+        }
+      }
+      console.log(`[MoodleService] Mock mode — expanded course map to ${moodleToLocal.size} entries (by code)`);
     }
 
     const results: MoodleCertificate[] = [];

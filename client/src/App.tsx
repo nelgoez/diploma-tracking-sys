@@ -12,6 +12,7 @@ import { IntegrationsPage } from './pages/IntegrationsPage';
 import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './pages/LoginPage';
 import { QAPage } from './pages/qa/QAPage';
+import { ServerRedirect } from './pages/ServerRedirect';
 import { SysAdminPage } from './pages/SysAdminPage';
 
 export default function App() {
@@ -22,6 +23,9 @@ export default function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/qa" element={<QAPage />} />
+        <Route path="/health" element={<ServerRedirect path="/health" />} />
+        <Route path="/docs" element={<ServerRedirect path="/docs" />} />
+        <Route path="/api-spec" element={<ServerRedirect path="/api-spec" />} />
         <Route
           path="/app"
           element={(
