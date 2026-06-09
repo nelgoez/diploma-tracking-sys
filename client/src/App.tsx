@@ -11,7 +11,7 @@ import { DashboardPage } from './pages/DashboardPage';
 import { IntegrationsPage } from './pages/IntegrationsPage';
 import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './pages/LoginPage';
-import { QAPage } from './pages/QAPage';
+import { QAPage } from './pages/qa/QAPage';
 import { SysAdminPage } from './pages/SysAdminPage';
 
 export default function App() {
