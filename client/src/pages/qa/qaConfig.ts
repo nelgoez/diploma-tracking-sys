@@ -1,5 +1,5 @@
 /* qa-guide-snapshot
-   stack=react18+vite6+mui7+hono+jose+jwt|db=postgres(supabase:vbjhxlezqhkmhpuypkvf)|auth=jwt-login|lang=es
+   stack=react18+vite6+mui7+hono+jose+jwt|db=postgres(supabase)|auth=jwt-login|lang=es
    generated=2026-06-08
    credentials-source=https://diplo-track-sys.atlassian.net/browse/DTS-42
    decisions=q1:jira-epic|q2:qa_inspector_ro|q3:/qa|q4:skip|q5:es
@@ -68,7 +68,7 @@ export const qaConfig: QaConfig = {
     specUrl: '/api/v1/api-spec',
   },
   api: {
-    baseUrl: 'http://localhost:3000/api/v1',
+    baseUrl: 'https://server-git-main-nelgoezs-projects.vercel.app/api/v1',
     loginEndpoint: '/api/v1/auth/login',
     tokenShape: '{ access_token, refresh_token, user: { id, email, role } }',
     loginHelper: null,
@@ -200,7 +200,7 @@ curl -X POST '<API_BASE_URL>/auth/refresh' \\
       capabilities: 'Inscribir estudiantes, gestionar overrides, calificar exámenes, batch operations',
     },
     {
-      email: 'nahuelgomez.cti@gmail.com',
+      email: 'estudiante@dts.unc.edu.ar',
       passwordHint: 'Disponible en credenciales',
       role: 'estudiante',
       capabilities: 'Ver progreso, certificados, elegibilidad, inscribirse a examen',

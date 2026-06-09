@@ -37,10 +37,10 @@ const es = {
   credsDesc: 'Los valores reales (demo users, strings de conexión, secretos) viven en el destino de credenciales — nunca en esta página pública.',
   credsCta: 'Abrir credenciales',
   credsGap: 'Destino de credenciales pendiente. Pedilo a tu lead.',
-  credsAsk: 'Si no tenés acceso, pedilo a tu instructor / lead / canal de Slack.',
+  credsAsk: 'Si no tenés acceso, pedilo a tu instructor o lead.',
   archTitle: 'Arquitectura + Repos',
   archDesc: 'Frontend → API → Database, con capa de MCP debajo. JWT via Supabase Auth con RBAC por rol (estudiante/coordinador/admin/sysadmin).',
-  trinityTitle: 'La Trifuerza del Testing + Setup de Env',
+  trinityTitle: 'Tres Capas del Testing + Setup de Env',
   trinityDesc: 'UI (Playwright) + API (OpenAPI / Postman) + DB (DBHub) = Testing Completo.',
   dbTitle: 'Backend testing: Database (dos caminos)',
   dbDesc: 'Inspeccioná datos directo en la base con el rol qa_inspector_ro (BYPASSRLS, solo SELECT). DBHub MCP o URI directa para VSCode.',
@@ -55,7 +55,7 @@ const es = {
 const demoUsers = [
   { email: 'admin@dts.unc.edu.ar', passwordHint: 'Disponible en credenciales', role: 'admin', roleColor: 'error' as const, capabilities: 'CRUD completo, gestión de usuarios, dashboard stats, control de sync' },
   { email: 'coordinador@dts.unc.edu.ar', passwordHint: 'Bajo pedido', role: 'coordinador', roleColor: 'warning' as const, capabilities: 'Inscribir estudiantes, gestionar overrides, calificar exámenes, batch operations' },
-  { email: 'nahuelgomez.cti@gmail.com', passwordHint: 'Disponible en credenciales', role: 'estudiante', roleColor: 'primary' as const, capabilities: 'Ver progreso, certificados, elegibilidad, inscribirse a examen' },
+  { email: 'estudiante@dts.unc.edu.ar', passwordHint: 'Disponible en credenciales', role: 'estudiante', roleColor: 'primary' as const, capabilities: 'Ver progreso, certificados, elegibilidad, inscribirse a examen' },
 ];
 
 const endpoints = [
@@ -141,7 +141,7 @@ export function QAPage() {
       {/* Hero */}
       <Box sx={{ textAlign: 'center', mb: 5 }}>
         <Typography variant="h3" component="h1" data-testid="qa-title" sx={{ fontWeight: 700 }}>
-          Software Testability Guide for QA
+          Guía de Testeabilidad para QA
         </Typography>
         <Typography variant="body1" color="text.secondary" sx={{ mt: 1.5, maxWidth: 640, mx: 'auto' }}>
           {es.subtitle}
@@ -447,7 +447,7 @@ npm i -g @playwright/cli@latest
 bunx playwright install
 
 # 2. El agente maneja el browser por comandos directos:
-playwright-cli open http://localhost:5173/login
+playwright-cli open <APP_URL>/login
 playwright-cli snapshot
 playwright-cli fill e5 "admin@dts.unc.edu.ar" --submit
 playwright-cli click e7
