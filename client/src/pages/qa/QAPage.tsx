@@ -37,7 +37,7 @@ const es = {
   credsDesc: 'Los valores reales (demo users, strings de conexión, secretos) viven en el destino de credenciales — nunca en esta página pública.',
   credsCta: 'Abrir credenciales',
   credsGap: 'Destino de credenciales pendiente. Pedilo a tu lead.',
-  credsAsk: 'Si no tenés acceso, pedilo a tu instructor o lead.',
+  credsAsk: 'Si no tenés acceso, pedilo a tu lead.',
   archTitle: 'Arquitectura + Repos',
   archDesc: 'Frontend → API → Database, con capa de MCP debajo. JWT via Supabase Auth con RBAC por rol (estudiante/coordinador/admin/sysadmin).',
   trinityTitle: 'Tres Capas del Testing + Setup de Env',
