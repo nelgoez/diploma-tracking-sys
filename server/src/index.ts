@@ -1,10 +1,11 @@
-import { join } from 'node:path';
 import { apiReference } from '@scalar/hono-api-reference';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 
 import { prettyJSON } from 'hono/pretty-json';
+
+import apiSpecYaml from './api-contracts.yaml' with { type: 'text' };
 import { errorHandler, notFoundHandler } from './middleware/error';
 import { providerRegistry } from './providers';
 import { adminRoutes } from './routes/admin';
@@ -95,35 +96,6 @@ ${isDemo ? '<p style="color:#fbbf24">⚠️ <strong>Modo demo:</strong> integrac
 </html>`);
 });
 
-let cachedApiSpec: string | null = null;
-let apiSpecLoaded = false;
-
-async function loadApiSpec(): Promise<string | null> {
-  if (apiSpecLoaded) { return cachedApiSpec; }
-  apiSpecLoaded = true;
-
-  const envPath = process.env.API_SPEC_PATH;
-  const candidates = envPath
-    ? [envPath]
-    : [
-        join(import.meta.dir, 'api-contracts.yaml'),
-        join(import.meta.dir, '..', '.context', 'SRS', 'api-contracts.yaml'),
-        '.context/SRS/api-contracts.yaml',
-      ];
-
-  for (const p of candidates) {
-    const f = Bun.file(p);
-    if (await f.exists()) {
-      cachedApiSpec = await f.text();
-      console.log(`[api-spec] Loaded from ${p} (${cachedApiSpec.length} bytes)`);
-      return cachedApiSpec;
-    }
-  }
-
-  console.warn(`[api-spec] Not found in: ${candidates.join(', ')}`);
-  return null;
-}
-
 app.get(
   '/docs',
   apiReference({
@@ -134,18 +106,8 @@ app.get(
   }),
 );
 
-app.get('/api-spec', async (c) => {
-  const spec = await loadApiSpec();
-
-  if (!spec) {
-    return c.json({
-      openapi: '3.0.3',
-      info: { title: 'Diploma Tracking System API', version: '0.1.0' },
-      paths: {},
-    });
-  }
-
-  return new Response(spec, {
+app.get('/api-spec', (c) => {
+  return new Response(apiSpecYaml, {
     headers: { 'Content-Type': 'text/yaml' },
   });
 });
