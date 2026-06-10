@@ -1,3 +1,4 @@
+import { join } from 'node:path';
 import { apiReference } from '@scalar/hono-api-reference';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
@@ -94,6 +95,35 @@ ${isDemo ? '<p style="color:#fbbf24">⚠️ <strong>Modo demo:</strong> integrac
 </html>`);
 });
 
+let cachedApiSpec: string | null = null;
+let apiSpecLoaded = false;
+
+async function loadApiSpec(): Promise<string | null> {
+  if (apiSpecLoaded) { return cachedApiSpec; }
+  apiSpecLoaded = true;
+
+  const envPath = process.env.API_SPEC_PATH;
+  const candidates = envPath
+    ? [envPath]
+    : [
+        join(import.meta.dir, 'api-contracts.yaml'),
+        join(import.meta.dir, '..', '.context', 'SRS', 'api-contracts.yaml'),
+        '.context/SRS/api-contracts.yaml',
+      ];
+
+  for (const p of candidates) {
+    const f = Bun.file(p);
+    if (await f.exists()) {
+      cachedApiSpec = await f.text();
+      console.log(`[api-spec] Loaded from ${p} (${cachedApiSpec.length} bytes)`);
+      return cachedApiSpec;
+    }
+  }
+
+  console.warn(`[api-spec] Not found in: ${candidates.join(', ')}`);
+  return null;
+}
+
 app.get(
   '/docs',
   apiReference({
@@ -105,39 +135,19 @@ app.get(
 );
 
 app.get('/api-spec', async (c) => {
-  const envPath = process.env.API_SPEC_PATH;
-  const candidates = envPath
-    ? [envPath]
-    : [
-        '.context/SRS/api-contracts.yaml',
-        '../.context/SRS/api-contracts.yaml',
-        '../../.context/SRS/api-contracts.yaml',
-      ];
+  const spec = await loadApiSpec();
 
-  let file: Bun.BunFile | null = null;
-  for (const rel of candidates) {
-    const f = Bun.file(rel);
-    if (await f.exists()) { file = f; break; }
-  }
-
-  if (!file) {
-    console.warn(`[api-spec] Not found in: ${candidates.join(', ')}`);
+  if (!spec) {
     return c.json({
-      openapi: '3.0.0',
+      openapi: '3.0.3',
       info: { title: 'Diploma Tracking System API', version: '0.1.0' },
       paths: {},
     });
   }
 
-  try {
-    const content = await file.text();
-    return new Response(content, {
-      headers: { 'Content-Type': 'text/yaml' },
-    });
-  }
-  catch {
-    return c.json({ error: 'Failed to load API spec' }, 500);
-  }
+  return new Response(spec, {
+    headers: { 'Content-Type': 'text/yaml' },
+  });
 });
 
 app.route('/api/v1/auth', authRoutes);
