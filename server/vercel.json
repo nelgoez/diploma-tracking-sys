@@ -1,7 +1,7 @@
 {
   "version": 2,
   "bunVersion": "1.x",
-  "buildCommand": "bun install && mkdir -p .context/SRS && cp ../.context/SRS/api-contracts.yaml .context/SRS/api-contracts.yaml && cp ../.context/SRS/api-contracts.yaml src/api-contracts.yaml",
+  "buildCommand": "bun install && bun run ../scripts/embed-spec.ts",
   "installCommand": "bun install",
   "rewrites": [{ "source": "/(.*)", "destination": "/api/index" }],
   "crons": [

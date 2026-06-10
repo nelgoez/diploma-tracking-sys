@@ -5,7 +5,7 @@ import { logger } from 'hono/logger';
 
 import { prettyJSON } from 'hono/pretty-json';
 
-import apiSpecYaml from './api-contracts.yaml' with { type: 'text' };
+import apiSpecYaml from './api-spec-content';
 import { errorHandler, notFoundHandler } from './middleware/error';
 import { providerRegistry } from './providers';
 import { adminRoutes } from './routes/admin';
@@ -106,7 +106,7 @@ app.get(
   }),
 );
 
-app.get('/api-spec', (c) => {
+app.get('/api-spec', (_c) => {
   return new Response(apiSpecYaml, {
     headers: { 'Content-Type': 'text/yaml' },
   });
