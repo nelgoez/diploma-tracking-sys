@@ -6,6 +6,7 @@ import { logAudit } from '../services/audit-log';
 import { createEligibilityDataAccess } from '../services/eligibility-data-access';
 import { guaraniService } from '../services/guarani.service';
 import { createNotification } from '../services/notification.service';
+import { generateDiplomaForEnrollment } from '../services/pdf.service';
 import { evaluateTrackEligibility } from '../services/rule-engine';
 
 const enrollments = new Hono<{ Variables: HonoVariables }>();
@@ -328,6 +329,10 @@ enrollments.put('/:id/grade', requireRole('coordinador', 'admin', 'sysadmin'), a
       courseName: 'Módulo Integrador',
     }).catch(err =>
       console.error('[Enrollments] Background diploma push to Guaraní failed:', err),
+    );
+
+    generateDiplomaForEnrollment(id, auth?.userId).catch(err =>
+      console.error('[Enrollments] Background PDF generation failed:', err),
     );
 
     await logAudit({

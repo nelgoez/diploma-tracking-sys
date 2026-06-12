@@ -14,7 +14,7 @@ const integrations = new Hono();
 
 integrations.use('/*', authenticate);
 
-integrations.get('/status', requireRole('admin', 'sysadmin'), async (c) => {
+integrations.get('/status', requireRole('admin', 'sysadmin', 'coordinador'), async (c) => {
   const [moodleHealth, guaraniHealth] = await Promise.all([
     moodleService.healthCheck(),
     guaraniService.healthCheck(),
@@ -280,7 +280,7 @@ integrations.post('/push/guarani/diploma', requireRole('admin', 'sysadmin'), asy
   return c.json(result, 201);
 });
 
-integrations.get('/logs', requireRole('admin', 'sysadmin'), async (c) => {
+integrations.get('/logs', requireRole('admin', 'sysadmin', 'coordinador'), async (c) => {
   const page = Number.parseInt(c.req.query('page') || '1');
   const limit = Number.parseInt(c.req.query('limit') || '20');
   const offset = (page - 1) * limit;

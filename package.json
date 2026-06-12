@@ -18,6 +18,7 @@
     "format:check": "prettier --check .",
     "lint": "eslint .",
     "lint:fix": "eslint --fix .",
+    "opencode": "bash -c 'set -a; . ./.env; set +a; exec opencode \"$@\"' --",
     "prepare": "husky"
   },
   "dependencies": {

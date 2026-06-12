@@ -5,11 +5,12 @@
 
 ## Demo Users
 
-| Email                      | Password             | Role        | Capabilities                                                                         |
-| -------------------------- | -------------------- | ----------- | ------------------------------------------------------------------------------------ |
-| admin@dts.unc.edu.ar       | Admin123456!         | admin       | Full admin dashboard, user CRUD, track/course CRUD, Moodle sync, integration logs    |
-| nahuelgomez.cti@gmail.com  | Test123456!          | estudiante  | Student dashboard, progress view, eligibility check, exam registration, certificates |
-| coordinador@dts.unc.edu.ar | (request from admin) | coordinador | Track management, enrollment, override creation, grade recording                     |
+| Email                      | Password          | Role        | Capabilities                                                                         |
+| -------------------------- | ----------------- | ----------- | ------------------------------------------------------------------------------------ |
+| admin@dts.unc.edu.ar       | Admin123456!      | admin       | Full admin dashboard, user CRUD, track/course CRUD, Moodle sync, integration logs    |
+| nahuelgomez.cti@gmail.com  | Test123456!       | estudiante  | Student dashboard, progress view, eligibility check, exam registration, certificates |
+| coordinador@dts.unc.edu.ar | Coord123456!      | coordinador | Track management, enrollment, override creation, grade recording                     |
+| estudiante@dts.unc.edu.ar  | Estudiante123456! | estudiante  | Student dashboard, progress view, eligibility check, exam registration, certificates |
 
 ## Access Points
 
@@ -23,11 +24,11 @@
 
 ## Database (Supabase)
 
-| Property    | Value                                                                                                                                                                                                       |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Project URL | https://vbjhxlezqhkmhpuypkvf.supabase.co                                                                                                                                                                    |
-| Anon Key    | (available in .env — uses Supabase MCP for agentic DB access)                                                                                                                                               |
-| Schema      | public (15 tables: students, courses, certificates, enrollments, prerequisite_rules, manual_overrides, integration_logs, audit_log, tracks, track_coordinators, users, prerequisite_sources, notifications) |
+| Property    | Value                                                                                                                                                                                                                      |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Project URL | https://vbjhxlezqhkmhpuypkvf.supabase.co                                                                                                                                                                                   |
+| Anon Key    | (available in .env — uses Supabase MCP for agentic DB access)                                                                                                                                                              |
+| Schema      | public (16 tables: students, courses, certificates, enrollments, prerequisite_rules, manual_overrides, integration_logs, audit_log, tracks, track_coordinators, users, prerequisite_sources, notifications, diploma_files) |
 
 ## API Authentication
 

@@ -19,6 +19,7 @@
     "hono": "^4.7.0",
     "jose": "^5.9.0",
     "pino": "^9.6.0",
+    "puppeteer": "^25.1.0",
     "zod": "^3.24.0"
   },
   "devDependencies": {

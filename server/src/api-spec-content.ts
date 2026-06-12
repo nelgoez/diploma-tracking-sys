@@ -561,6 +561,87 @@ paths:
               schema:
                 \$ref: '#/components/schemas/EligibilityResult'
 
+  # ─── Diplomas ───────────────────────────────────────────────
+  /diplomas/{enrollmentId}/status:
+    get:
+      operationId: getDiplomaStatus
+      summary: Get diploma generation status
+      tags: [Diplomas]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: enrollmentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Diploma status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [pending, generated, error]
+                  generatedAt:
+                    type: string
+                    format: date-time
+                  referenceCode:
+                    type: string
+                  errorMessage:
+                    type: string
+
+  /diplomas/{enrollmentId}/download:
+    get:
+      operationId: downloadDiploma
+      summary: Download diploma PDF
+      tags: [Diplomas]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: enrollmentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Diploma PDF file
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        '404':
+          \$ref: '#/components/responses/NotFound'
+
+  /diplomas/{enrollmentId}/generate:
+    post:
+      operationId: generateDiploma
+      summary: Generate diploma PDF for enrollment
+      tags: [Diplomas]
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: enrollmentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '201':
+          description: Diploma generation result
+          content:
+            application/json:
+              schema:
+                \$ref: '#/components/schemas/DiplomaResult'
+
   # ─── Prerequisite Rules ─────────────────────────────────────
   /rules:
     get:
@@ -1463,6 +1544,22 @@ components:
         message:
           type: string
           example: Sync initiated
+
+    # ─── Diplomas ──────────────────────────────────────────
+    DiplomaResult:
+      type: object
+      properties:
+        enrollmentId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [generated, error]
+        filePath:
+          type: string
+        errorMessage:
+          type: string
+          nullable: true
 
     # ─── Enrollments ───────────────────────────────────────
     Enrollment:
