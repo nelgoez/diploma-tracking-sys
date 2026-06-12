@@ -78,19 +78,19 @@ students.get('/:id/progress', async (c) => {
   const auth = c.get('auth');
   let { id } = c.req.param();
 
-  // For students, resolve their real student ID from email — auth UUID ≠ student UUID
+  // For students, check data isolation — only allow access to own record
   if (auth.role === 'estudiante') {
     const { data: ownStudent } = await supabaseAdmin
       .from('students')
       .select('id')
       .eq('email', auth.email)
       .single();
-    if (!ownStudent) {
-      return c.json({ error: 'Student not found' }, 404);
+    if (!ownStudent || ownStudent.id !== id) {
+      return c.json({ error: 'Forbidden' }, 403);
     }
     id = ownStudent.id;
   }
-  else if (auth.role !== 'admin' && auth.role !== 'sysadmin' && auth.role !== 'coordinador') {
+  else if (!['admin', 'sysadmin', 'coordinador'].includes(auth.role)) {
     return c.json({ error: 'Forbidden' }, 403);
   }
 
