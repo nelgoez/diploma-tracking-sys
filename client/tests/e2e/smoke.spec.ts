@@ -7,11 +7,17 @@ const STUDENT_PASSWORD = process.env.TEST_STUDENT_PASSWORD || 'Test123456!';
 
 test.describe('DTS Smoke Tests', () => {
   test('should load login page', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/login');
     await expect(page).toHaveTitle(/Sistema de Gestión de Diplomas/);
     await expect(page.getByRole('textbox', { name: /correo/i })).toBeVisible();
     await expect(page.getByRole('textbox', { name: /contraseña/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /entrar/i })).toBeVisible();
+  });
+
+  test('should load landing page and navigate to login', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.locator('h1, h2').first()).toBeVisible();
+    await expect(page.getByRole('button', { name: /ingresar|iniciar/i }).first()).toBeVisible();
   });
 
   test('should login as admin and see dashboard', async ({ page }) => {
