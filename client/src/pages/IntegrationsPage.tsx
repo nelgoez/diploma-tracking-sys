@@ -44,13 +44,17 @@ const STATUS_TIMEOUT_MS = 15000;
 
 export function IntegrationsPage() {
   const { t } = useTranslation();
+  const userRole = localStorage.getItem('userRole') || 'estudiante';
+  const canSync = ['admin', 'sysadmin'].includes(userRole);
+  const canView = ['admin', 'sysadmin', 'coordinador'].includes(userRole);
   const [status, setStatus] = useState<IntegrationStatus | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!canView);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [syncing, setSyncing] = useState<{ moodle: boolean, guarani: boolean }>({ moodle: false, guarani: false });
   const [syncError, setSyncError] = useState<string | null>(null);
 
   const fetchStatus = async () => {
+    if (!canView) { setLoading(false); return; }
     const token = localStorage.getItem('token') || '';
     setLoadError(null);
     try {
@@ -61,6 +65,7 @@ export function IntegrationsPage() {
         signal: controller.signal,
       });
       clearTimeout(timer);
+      if (res.status === 403) { setLoadError('No tenés permisos para ver esta página.'); return; }
       if (!res.ok) { throw new Error(`Status ${res.status}`); }
       const data = await res.json() as IntegrationStatus;
       setStatus(data);
@@ -83,6 +88,7 @@ export function IntegrationsPage() {
   }, []);
 
   const handleSync = async (integration: 'moodle' | 'guarani') => {
+    if (!canSync) { setSyncError('No tenés permisos para ejecutar sincronizaciones.'); return; }
     setSyncing(prev => ({ ...prev, [integration]: true }));
     setSyncError(null);
     const token = localStorage.getItem('token') || '';
@@ -90,12 +96,13 @@ export function IntegrationsPage() {
       await api.post(`/integrations/sync/${integration}`, {}, token);
       await fetchStatus();
     }
-    catch (err) {
+    catch (err: unknown) {
       if (err instanceof DOMException && err.name === 'AbortError') {
-        setSyncError('Sincronización abortada — posiblemente excedió el tiempo límite del servidor. Verificá la conectividad con Moodle/Guaraní.');
+        setSyncError('Sincronización abortada — posiblemente excedió el tiempo límite del servidor.');
       }
       else {
-        setSyncError(err instanceof Error ? err.message : 'Sync failed');
+        const msg = err instanceof Error ? err.message : 'Sync failed';
+        setSyncError(msg.includes('403') ? 'No tenés permisos para sincronizar. Solo admin/sysadmin pueden ejecutar sincronizaciones.' : msg);
       }
     }
     finally {
@@ -129,6 +136,17 @@ export function IntegrationsPage() {
     }
   };
 
+  if (!canView) {
+    return (
+      <Box>
+        <Typography variant="h4" gutterBottom>{t('nav.integrations')}</Typography>
+        <Alert severity="info">
+          La sección de integraciones está disponible solo para coordinadores y administradores.
+        </Alert>
+      </Box>
+    );
+  }
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', p: 3, gap: 2 }}>
@@ -142,7 +160,7 @@ export function IntegrationsPage() {
     return (
       <Box>
         <Typography variant="h4" gutterBottom>{t('nav.integrations')}</Typography>
-        <Alert severity="warning" action={<Button size="small" onClick={() => { setLoading(true); void fetchStatus(); }}>Reintentar</Button>}>
+        <Alert severity={loadError.includes('permisos') ? 'info' : 'warning'} action={<Button size="small" onClick={() => { setLoading(true); void fetchStatus(); }}>Reintentar</Button>}>
           {loadError}
         </Alert>
       </Box>
@@ -179,14 +197,16 @@ export function IntegrationsPage() {
                     icon={getStatusIcon(mapStatus(status?.moodle.status))}
                   />
                 </Box>
-                <Button
-                  variant="outlined"
-                  startIcon={<SyncIcon />}
-                  onClick={() => { void handleSync('moodle'); }}
-                  disabled={syncing.moodle}
-                >
-                  {syncing.moodle ? <CircularProgress size={20} /> : t('button.sync')}
-                </Button>
+                {canSync && (
+                  <Button
+                    variant="outlined"
+                    startIcon={<SyncIcon />}
+                    onClick={() => { void handleSync('moodle'); }}
+                    disabled={syncing.moodle}
+                  >
+                    {syncing.moodle ? <CircularProgress size={20} /> : t('button.sync')}
+                  </Button>
+                )}
               </Box>
 
               <Box sx={{ mb: 1 }}>
@@ -224,20 +244,22 @@ export function IntegrationsPage() {
                     icon={getStatusIcon(mapStatus(status?.guarani.status))}
                   />
                 </Box>
-                <Button
-                  variant="outlined"
-                  startIcon={<SyncIcon />}
-                  onClick={() => { void handleSync('guarani'); }}
-                  disabled={syncing.guarani}
-                >
-                  {syncing.guarani ? <CircularProgress size={20} /> : t('button.sync')}
-                </Button>
+                {canSync && (
+                  <Button
+                    variant="outlined"
+                    startIcon={<SyncIcon />}
+                    onClick={() => { void handleSync('guarani'); }}
+                    disabled={syncing.guarani}
+                  >
+                    {syncing.guarani ? <CircularProgress size={20} /> : t('button.sync')}
+                  </Button>
+                )}
               </Box>
 
               {mapStatus(status?.guarani.status) !== 'ok' && (
-                <Alert severity={mapStatus(status?.guarani.status) === 'error' ? 'error' : 'warning'} sx={{ mb: 2 }}>
+                <Alert severity={mapStatus(status?.guarani.status) === 'error' ? 'error' : 'info'} sx={{ mb: 2 }}>
                   {status?.guarani.status === 'disconnected'
-                    ? 'Guaraní no está configurado — falta el token de acceso (GUARANI_TOKEN).'
+                    ? 'SIU Guaraní no está conectado — las credenciales se configuran en producción cuando esté disponible. El sistema funciona sin Guaraní.'
                     : t('integration.sync_errors', { count: status?.guarani.errors ?? 0 })}
                 </Alert>
               )}
