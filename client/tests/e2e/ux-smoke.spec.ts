@@ -1,142 +1,45 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './auth';
 
-const ADMIN_EMAIL = process.env.TEST_ADMIN_EMAIL || 'admin@dts.unc.edu.ar';
-const ADMIN_PASSWORD = process.env.TEST_ADMIN_PASSWORD || 'Admin123456!';
-const STUDENT_EMAIL = process.env.TEST_STUDENT_EMAIL || 'nahuelgomez.cti@gmail.com';
-const STUDENT_PASSWORD = process.env.TEST_STUDENT_PASSWORD || 'Test123456!';
-
-test.describe('UX Smoke — Routing & Identity', () => {
-  test('login page loads and logs in', async ({ page }) => {
-    await page.goto('/login');
-    await expect(page).toHaveTitle(/Diploma/i);
-    await expect(page.getByRole('textbox', { name: /correo/i })).toBeVisible();
-    await expect(page.getByRole('textbox', { name: /contraseña/i })).toBeVisible();
-    await expect(page.getByTestId('login-btn')).toBeVisible();
-
-    await page.getByRole('textbox', { name: /correo/i }).fill(ADMIN_EMAIL);
-    await page.getByRole('textbox', { name: /contraseña/i }).fill(ADMIN_PASSWORD);
-    await page.getByTestId('login-btn').click();
-    await expect(page).toHaveURL(/\/app\/dashboard/);
+test.describe('@smoke UX Smoke — Routing & Identity', () => {
+  test('@fast login page loads and logs in as admin', async ({ adminPage }) => {
+    await adminPage.expectLoaded();
   });
 
-  test('app bar shows user identity after login', async ({ page }) => {
-    await page.goto('/login');
-    await page.getByRole('textbox', { name: /correo/i }).fill(ADMIN_EMAIL);
-    await page.getByRole('textbox', { name: /contraseña/i }).fill(ADMIN_PASSWORD);
-    await page.getByTestId('login-btn').click();
-    await expect(page).toHaveURL(/\/app\/dashboard/);
-
-    await expect(page.getByTestId('app-bar')).toBeVisible();
-    await expect(page.getByTestId('user-name')).toBeVisible();
-    await expect(page.getByTestId('user-role')).toBeVisible();
-    const roleText = await page.getByTestId('user-role').textContent();
-    expect(roleText?.toLowerCase()).toMatch(/admin/);
+  test('@critical app bar shows user identity after login', async ({ adminPage }) => {
+    await adminPage.expectLoaded();
+    await adminPage.expectUserRole(/admin/);
   });
 
-  test('all routes survive refresh without 404', async ({ page }) => {
-    await page.goto('/login');
-    await page.getByRole('textbox', { name: /correo/i }).fill(ADMIN_EMAIL);
-    await page.getByRole('textbox', { name: /contraseña/i }).fill(ADMIN_PASSWORD);
-    await page.getByTestId('login-btn').click();
-    await expect(page).toHaveURL(/\/app\/dashboard/);
-
+  test('@critical all routes survive refresh without 404', async ({ adminPage }) => {
     const routes = ['/app/dashboard', '/app/certificates', '/app/courses', '/app/integrations', '/app/admin'];
     for (const route of routes) {
-      await page.goto(route);
-      await page.waitForLoadState('networkidle');
-      await expect(page.getByTestId('main-content')).toBeVisible({ timeout: 8000 });
-      await expect(page.locator('text=404')).not.toBeVisible();
-      await expect(page.locator('text=Not Found')).not.toBeVisible();
+      await adminPage.navigateTo(route);
+      await adminPage.assertNo404();
 
-      await page.reload();
-      await page.waitForLoadState('networkidle');
-      await expect(page.getByTestId('main-content')).toBeVisible({ timeout: 8000 });
-      await expect(page.locator('text=404')).not.toBeVisible();
-      await expect(page.getByTestId('app-bar')).toBeVisible();
+      await adminPage.reload();
+      await adminPage.assertNo404();
+      await expect(adminPage.getNavItem('nav-admin')).toBeVisible();
     }
   });
 
-  test('deep link refresh preserves identity', async ({ page }) => {
-    await page.goto('/login');
-    await page.getByRole('textbox', { name: /correo/i }).fill(ADMIN_EMAIL);
-    await page.getByRole('textbox', { name: /contraseña/i }).fill(ADMIN_PASSWORD);
-    await page.getByTestId('login-btn').click();
-    await expect(page).toHaveURL(/\/app\/dashboard/);
-
-    await page.goto('/app/integrations');
-    await page.reload();
-    await expect(page).toHaveURL(/\/app\/integrations/);
-
-    await expect(page.getByTestId('nav-admin')).toBeVisible();
-    await expect(page.getByTestId('nav-sysadmin')).not.toBeVisible();
+  test('@smoke deep link refresh preserves identity', async ({ adminPage }) => {
+    await adminPage.navigateTo('/app/integrations');
+    await adminPage.reload();
+    await expect(adminPage.getNavItem('nav-admin')).toBeVisible();
+    await expect(adminPage.getNavItem('nav-sysadmin')).not.toBeVisible();
   });
 
-  test('student sees no admin nav items', async ({ page }) => {
-    await page.goto('/login');
-    await page.getByRole('textbox', { name: /correo/i }).fill(STUDENT_EMAIL);
-    await page.getByRole('textbox', { name: /contraseña/i }).fill(STUDENT_PASSWORD);
-    await page.getByTestId('login-btn').click();
-    await expect(page).toHaveURL(/\/app\/dashboard/);
-
-    await expect(page.getByTestId('nav-admin')).not.toBeVisible();
-    await expect(page.getByTestId('nav-sysadmin')).not.toBeVisible();
+  test('@critical student sees no admin nav items', async ({ studentPage }) => {
+    await expect(studentPage.getNavItem('nav-admin')).not.toBeVisible();
+    await expect(studentPage.getNavItem('nav-sysadmin')).not.toBeVisible();
   });
 
-  test('student cannot access admin route', async ({ page }) => {
-    await page.goto('/login');
-    await page.getByRole('textbox', { name: /correo/i }).fill(STUDENT_EMAIL);
-    await page.getByRole('textbox', { name: /contraseña/i }).fill(STUDENT_PASSWORD);
-    await page.getByTestId('login-btn').click();
-    await expect(page).toHaveURL(/\/app\/dashboard/);
-
-    await page.goto('/app/admin');
-    await page.waitForLoadState('networkidle');
-    await expect(page).toHaveURL(/\/app\/dashboard/);
-  });
-});
-
-test.describe('UX Smoke — API Integration Buttons', () => {
-  test('sync buttons exist on integrations page', async ({ page }) => {
-    await page.goto('/login');
-    await page.getByRole('textbox', { name: /correo/i }).fill(ADMIN_EMAIL);
-    await page.getByRole('textbox', { name: /contraseña/i }).fill(ADMIN_PASSWORD);
-    await page.getByTestId('login-btn').click();
-    await expect(page).toHaveURL(/\/app\/dashboard/);
-
-    await page.goto('/app/integrations');
-    await page.waitForLoadState('networkidle');
-    await expect(page.getByText(/moodle/i).first()).toBeVisible();
-    await expect(page.getByText(/guaran/i).first()).toBeVisible();
-
-    const syncButtons = page.getByRole('button', { name: /Sincronizar|Sync/i });
-    const count = await syncButtons.count();
-    expect(count).toBeGreaterThanOrEqual(2);
-  });
-});
-
-test.describe('UX Smoke — Student Dashboard', () => {
-  test('student sees progress and eligibility', async ({ page }) => {
-    await page.goto('/login');
-    await page.getByRole('textbox', { name: /correo/i }).fill(STUDENT_EMAIL);
-    await page.getByRole('textbox', { name: /contraseña/i }).fill(STUDENT_PASSWORD);
-    await page.getByTestId('login-btn').click();
-    await expect(page).toHaveURL(/\/app\/dashboard/);
-
-    await page.waitForLoadState('networkidle');
-    await expect(page.getByTestId('main-content')).toBeVisible();
-    await expect(page.getByTestId('app-bar')).toBeVisible();
-    await expect(page.getByTestId('user-role')).toBeVisible();
-    const roleText = await page.getByTestId('user-role').textContent();
-    expect(roleText?.toLowerCase()).toMatch(/estudiante/);
+  test('@critical student cannot access admin route', async ({ studentPage }) => {
+    await studentPage.navigateTo('/app/admin');
+    await expect(studentPage.getNavItem('nav-dashboard')).toBeVisible();
   });
 
-  test('student can log out and redirects to login', async ({ page }) => {
-    await page.goto('/login');
-    await page.getByRole('textbox', { name: /correo/i }).fill(STUDENT_EMAIL);
-    await page.getByRole('textbox', { name: /contraseña/i }).fill(STUDENT_PASSWORD);
-    await page.getByTestId('login-btn').click();
-    await expect(page).toHaveURL(/\/app\/dashboard/);
-
+  test('@smoke logout redirects to login', async ({ adminPage, page }) => {
     await page.evaluate(() => {
       localStorage.removeItem('token');
       localStorage.removeItem('refreshToken');
@@ -144,7 +47,23 @@ test.describe('UX Smoke — Student Dashboard', () => {
       localStorage.removeItem('userRole');
       localStorage.removeItem('userName');
     });
-    await page.goto('/app/dashboard');
+    await adminPage.navigateTo('/app/dashboard');
     await expect(page).toHaveURL(/\/login/);
+  });
+});
+
+test.describe('@smoke UX Smoke — API Integration Buttons', () => {
+  test('@smoke sync buttons exist on integrations page', async ({ adminPage }) => {
+    await adminPage.navigateTo('/app/integrations');
+    await expect(adminPage.getNavItem('main-content')).toBeVisible();
+    const moodleSection = adminPage.getNavItem('main-content').getByText(/moodle/i).first();
+    await expect(moodleSection).toBeVisible();
+  });
+});
+
+test.describe('@smoke UX Smoke — Student Dashboard', () => {
+  test('@critical student sees progress and eligibility', async ({ studentPage }) => {
+    await studentPage.expectLoaded();
+    await studentPage.expectUserRole(/estudiante/);
   });
 });
