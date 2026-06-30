@@ -17,7 +17,7 @@ test.describe('DTS Smoke Tests', () => {
   test('should load landing page and navigate to login', async ({ page }) => {
     await page.goto('/');
     await expect(page.locator('h1, h2').first()).toBeVisible();
-    await expect(page.getByRole('link', { name: /ingresar|iniciar sesión|entrar/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /ingresar|iniciar/i }).first()).toBeVisible();
   });
 
   test('should login as admin and see dashboard', async ({ page }) => {
