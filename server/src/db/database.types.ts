@@ -416,6 +416,7 @@ export interface Database {
           guarani_id: string | null
           id: string
           is_active: boolean
+          is_demo: boolean
           name: string
           role: string
           updated_at: string
@@ -427,6 +428,7 @@ export interface Database {
           guarani_id?: string | null
           id?: string
           is_active?: boolean
+          is_demo?: boolean
           name: string
           role?: string
           updated_at?: string
@@ -438,6 +440,7 @@ export interface Database {
           guarani_id?: string | null
           id?: string
           is_active?: boolean
+          is_demo?: boolean
           name?: string
           role?: string
           updated_at?: string
