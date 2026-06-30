@@ -9,6 +9,25 @@ import { consolidateCertNotifications, upsertEligibilityNotification } from '../
 import { evaluateTrackEligibility } from '../services/rule-engine';
 
 const syncLocks = new Map<string, boolean>();
+const syncLockTimestamps = new Map<string, number>();
+const SYNC_LOCK_TTL_MS = 5 * 60 * 1000; // 5 min
+
+function acquireLock(key: string): boolean {
+  const timestamp = syncLockTimestamps.get(key);
+  if (timestamp && Date.now() - timestamp > SYNC_LOCK_TTL_MS) {
+    syncLocks.delete(key);
+    syncLockTimestamps.delete(key);
+  }
+  if (syncLocks.get(key)) { return false; }
+  syncLocks.set(key, true);
+  syncLockTimestamps.set(key, Date.now());
+  return true;
+}
+
+function releaseLock(key: string): void {
+  syncLocks.delete(key);
+  syncLockTimestamps.delete(key);
+}
 
 const integrations = new Hono();
 
@@ -56,13 +75,25 @@ integrations.get('/status', requireRole('admin', 'sysadmin', 'coordinador'), asy
   });
 });
 
+integrations.get('/sync/moodle/status', requireRole('admin', 'sysadmin'), async (c) => {
+  const moodleHealth = await moodleService.healthCheck();
+  return c.json({
+    sync_in_progress: syncLocks.get('moodle') ?? false,
+    lock_age_ms: syncLockTimestamps.has('moodle') ? Date.now() - syncLockTimestamps.get('moodle')! : null,
+    moodle: {
+      status: moodleHealth.status,
+      message: moodleHealth.message,
+    },
+  });
+});
+
 integrations.post('/sync/moodle', requireRole('admin', 'sysadmin'), async (c) => {
   const SYNC_KEY = 'moodle';
 
-  if (syncLocks.get(SYNC_KEY)) {
-    return c.json({ error: 'Sync already in progress' }, 409);
+  if (!acquireLock(SYNC_KEY)) {
+    const age = syncLockTimestamps.get(SYNC_KEY) ? Date.now() - syncLockTimestamps.get(SYNC_KEY)! : 0;
+    return c.json({ error: 'Sync already in progress', lock_age_ms: age }, 409);
   }
-  syncLocks.set(SYNC_KEY, true);
 
   const auth = c.get('auth');
   const startedAt = Date.now();
@@ -219,11 +250,17 @@ integrations.post('/sync/moodle', requireRole('admin', 'sysadmin'), async (c) =>
     }, 500);
   }
   finally {
-    syncLocks.delete(SYNC_KEY);
+    releaseLock(SYNC_KEY);
   }
 });
 
 integrations.post('/sync/guarani', requireRole('admin', 'sysadmin'), async (c) => {
+  const SYNC_KEY = 'guarani';
+
+  if (!acquireLock(SYNC_KEY)) {
+    return c.json({ error: 'Sync already in progress' }, 409);
+  }
+
   const auth = c.get('auth');
   const startedAt = Date.now();
   const logId = await logSyncStart('guarani', auth?.userId || 'system');
@@ -257,6 +294,9 @@ integrations.post('/sync/guarani', requireRole('admin', 'sysadmin'), async (c) =
       success: false,
       error: err instanceof Error ? err.message : 'Sync failed',
     }, 500);
+  }
+  finally {
+    releaseLock(SYNC_KEY);
   }
 });
 
