@@ -29,6 +29,7 @@ import {
   Typography,
 } from '@mui/material';
 import { useCallback, useEffect, useState } from 'react';
+import { GradeExamModal } from '../components/GradeExamModal';
 import { api } from '../lib/api';
 
 interface TrackSummary {
@@ -66,6 +67,7 @@ export function CoordinatorPage() {
   const [examDate, setExamDate] = useState('');
   const [grades, setGrades] = useState<Record<string, number>>({});
   const [snackbar, setSnackbar] = useState<{ msg: string, severity: 'success' | 'error' } | null>(null);
+  const [individualGrade, setIndividualGrade] = useState<{ open: boolean, enrollmentId?: string, studentName?: string }>({ open: false });
 
   const fetchTracks = useCallback(async () => {
     try {
@@ -300,6 +302,17 @@ export function CoordinatorPage() {
                         size="small"
                       />
                     </TableCell>
+                    <TableCell>
+                      {s.exam_status === 'inscripto' && (
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          onClick={() => setIndividualGrade({ open: true, enrollmentId: s.student_id, studentName: s.name })}
+                        >
+                          Calificar
+                        </Button>
+                      )}
+                    </TableCell>
                   </TableRow>
                 ))}
                 {students.length === 0 && !loading && (
@@ -314,6 +327,17 @@ export function CoordinatorPage() {
           </TableContainer>
         </>
       )}
+
+      <GradeExamModal
+        open={individualGrade.open}
+        enrollmentId={individualGrade.enrollmentId}
+        studentName={individualGrade.studentName}
+        onClose={() => setIndividualGrade({ open: false })}
+        onGraded={() => {
+          setIndividualGrade({ open: false });
+          if (selectedTrack) { void fetchStudents(selectedTrack.track_id); }
+        }}
+      />
 
       <Dialog open={gradeDialogOpen} onClose={() => setGradeDialogOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Calificación masiva</DialogTitle>
