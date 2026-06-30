@@ -6,8 +6,10 @@ export default defineConfig({
   testDir: './tests/e2e',
   timeout: 30000,
   retries: CI ? 2 : 1,
+  globalSetup: './tests/e2e/global-setup',
+  grep: process.env.TEST_GREP ? new RegExp(process.env.TEST_GREP) : undefined,
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL: process.env.BASE_URL || 'http://localhost:5173',
     trace: 'on-first-retry',
     video: CI ? 'on' : 'off',
     launchOptions: CI ? { args: ['--no-sandbox', '--disable-setuid-sandbox'] } : undefined,

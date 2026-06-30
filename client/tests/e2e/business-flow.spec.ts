@@ -1,63 +1,36 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './auth';
 
-const ADMIN_EMAIL = process.env.TEST_ADMIN_EMAIL || 'admin@dts.unc.edu.ar';
-const ADMIN_PASSWORD = process.env.TEST_ADMIN_PASSWORD || 'Admin123456!';
-const STUDENT_EMAIL = process.env.TEST_STUDENT_EMAIL || 'nahuelgomez.cti@gmail.com';
-const STUDENT_PASSWORD = process.env.TEST_STUDENT_PASSWORD || 'Test123456!';
-
-test.describe('DTS Full Business Flow', () => {
-  test('admin can view dashboard with stats', async ({ page }) => {
-    await page.goto('/login');
-    await page.getByRole('textbox', { name: /correo/i }).fill(ADMIN_EMAIL);
-    await page.getByRole('textbox', { name: /contraseña/i }).fill(ADMIN_PASSWORD);
-    await page.getByRole('button', { name: /entrar/i }).click();
-
-    await expect(page).toHaveURL(/\/dashboard/, { timeout: 10000 });
-    await expect(page.getByTestId('app-bar')).toBeVisible();
-    await expect(page.getByTestId('user-role')).toBeVisible();
+test.describe('@smoke DTS Full Business Flow', () => {
+  test('@critical admin can view dashboard with stats', async ({ adminPage }) => {
+    await adminPage.expectLoaded();
+    await expect(adminPage.getUserName()).toBeVisible();
+    await adminPage.expectUserRole(/admin/);
   });
 
-  test('student can view progress and eligibility', async ({ page }) => {
-    await page.goto('/login');
-    await page.getByRole('textbox', { name: /correo/i }).fill(STUDENT_EMAIL);
-    await page.getByRole('textbox', { name: /contraseña/i }).fill(STUDENT_PASSWORD);
-    await page.getByRole('button', { name: /entrar/i }).click();
-
-    await expect(page).toHaveURL(/\/dashboard/, { timeout: 10000 });
-    await expect(page.getByText(/Bienvenido\/a/i)).toBeVisible();
-    await expect(page.getByText(/Progreso/i)).toBeVisible();
+  test('@critical student can view progress and eligibility', async ({ studentPage }) => {
+    await studentPage.expectLoaded();
+    await expect(studentPage.getUserName()).toBeVisible();
   });
 
-  test('navigation between pages works', async ({ page }) => {
-    await page.goto('/login');
-    await page.getByRole('textbox', { name: /correo/i }).fill(ADMIN_EMAIL);
-    await page.getByRole('textbox', { name: /contraseña/i }).fill(ADMIN_PASSWORD);
-    await page.getByRole('button', { name: /entrar/i }).click();
-    await expect(page).toHaveURL(/\/dashboard/, { timeout: 10000 });
-
+  test('@smoke navigation between pages works', async ({ adminPage }) => {
     const navIds = ['nav-dashboard', 'nav-certificates', 'nav-courses', 'nav-integrations', 'nav-admin'];
     for (const id of navIds) {
-      const link = page.getByTestId(id);
+      const link = adminPage.getNavItem(id);
       if (await link.isVisible()) {
         await link.click();
-        await page.waitForTimeout(500);
       }
     }
   });
 
-  test('language switcher toggles to English and back', async ({ page }) => {
-    await page.goto('/login');
-
-    await expect(page.getByRole('textbox', { name: /correo/i })).toBeVisible();
+  test('@smoke language switcher toggles to English and back', async ({ loginPage, page }) => {
+    await loginPage.goto();
 
     const langBtn = page.getByRole('button', { name: /idioma/i });
     if (await langBtn.isVisible()) {
       await langBtn.click();
-      await page.waitForTimeout(300);
       const englishOption = page.getByText('English');
       if (await englishOption.isVisible()) {
         await englishOption.click();
-        await page.waitForTimeout(500);
       }
     }
 
@@ -66,11 +39,9 @@ test.describe('DTS Full Business Flow', () => {
     const langBtnBack = page.getByRole('button', { name: /language/i });
     if (await langBtnBack.isVisible()) {
       await langBtnBack.click();
-      await page.waitForTimeout(300);
       const spanishOption = page.getByText('Español');
       if (await spanishOption.isVisible()) {
         await spanishOption.click();
-        await page.waitForTimeout(500);
       }
     }
   });
