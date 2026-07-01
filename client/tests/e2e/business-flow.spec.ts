@@ -16,9 +16,8 @@ test.describe('@smoke DTS Full Business Flow', () => {
     const navIds = ['nav-dashboard', 'nav-certificates', 'nav-courses', 'nav-integrations', 'nav-admin'];
     for (const id of navIds) {
       const link = adminPage.getNavItem(id);
-      if (await link.isVisible()) {
-        await link.click();
-      }
+      await expect(link).toBeVisible();
+      await link.click();
     }
   });
 
