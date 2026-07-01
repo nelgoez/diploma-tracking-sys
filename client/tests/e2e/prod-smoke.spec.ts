@@ -10,7 +10,7 @@ test.describe('@prod Production Validation', () => {
   test('@prod page loads and login form is visible', async ({ page }) => {
     test.skip(!ADMIN_EMAIL, 'TEST_ADMIN_EMAIL not set');
     await page.goto(`${PROD_URL}/login`, { timeout: 20000, waitUntil: 'domcontentloaded' });
-    await page.waitForSelector('input[type="email"]', { timeout: 10000 });
+    await expect(page.getByTestId("email-input")).toBeVisible({ timeout: 10000 });
 
     await expect(page).toHaveTitle(/Diploma/i);
     await expect(page.getByTestId('email-input')).toBeVisible();
@@ -19,7 +19,7 @@ test.describe('@prod Production Validation', () => {
   test('@prod @critical admin can login and see dashboard', async ({ page }) => {
     test.skip(!ADMIN_EMAIL, 'TEST_ADMIN_EMAIL not set');
     await page.goto(`${PROD_URL}/login`, { timeout: 20000, waitUntil: 'domcontentloaded' });
-    await page.waitForSelector('input[type="email"]', { timeout: 10000 });
+    await expect(page.getByTestId("email-input")).toBeVisible({ timeout: 10000 });
 
     await page.getByTestId('email-input').fill(ADMIN_EMAIL);
     await page.getByTestId('password-input').fill(ADMIN_PASSWORD);
@@ -32,7 +32,7 @@ test.describe('@prod Production Validation', () => {
   test('@prod admin nav shows correct items', async ({ page }) => {
     test.skip(!ADMIN_EMAIL, 'TEST_ADMIN_EMAIL not set');
     await page.goto(`${PROD_URL}/login`, { timeout: 20000, waitUntil: 'domcontentloaded' });
-    await page.waitForSelector('input[type="email"]', { timeout: 10000 });
+    await expect(page.getByTestId("email-input")).toBeVisible({ timeout: 10000 });
 
     await page.getByTestId('email-input').fill(ADMIN_EMAIL);
     await page.getByTestId('password-input').fill(ADMIN_PASSWORD);
@@ -47,7 +47,7 @@ test.describe('@prod Production Validation', () => {
   test('@prod @critical student cannot access admin', async ({ page }) => {
     test.skip(!STUDENT_EMAIL, 'TEST_STUDENT_EMAIL not set');
     await page.goto(`${PROD_URL}/login`, { timeout: 20000, waitUntil: 'domcontentloaded' });
-    await page.waitForSelector('input[type="email"]', { timeout: 10000 });
+    await expect(page.getByTestId("email-input")).toBeVisible({ timeout: 10000 });
 
     await page.getByTestId('email-input').fill(STUDENT_EMAIL);
     await page.getByTestId('password-input').fill(STUDENT_PASSWORD);
@@ -60,7 +60,7 @@ test.describe('@prod Production Validation', () => {
   test('@prod page refresh does not cause 404 on any route', async ({ page }) => {
     test.skip(!ADMIN_EMAIL, 'TEST_ADMIN_EMAIL not set');
     await page.goto(`${PROD_URL}/login`, { timeout: 20000, waitUntil: 'domcontentloaded' });
-    await page.waitForSelector('input[type="email"]', { timeout: 10000 });
+    await expect(page.getByTestId("email-input")).toBeVisible({ timeout: 10000 });
 
     await page.getByTestId('email-input').fill(ADMIN_EMAIL);
     await page.getByTestId('password-input').fill(ADMIN_PASSWORD);
@@ -80,7 +80,7 @@ test.describe('@prod Production Validation', () => {
   test('@prod browser back button does not cause 404', async ({ page }) => {
     test.skip(!STUDENT_EMAIL, 'TEST_STUDENT_EMAIL not set');
     await page.goto(`${PROD_URL}/login`, { timeout: 20000, waitUntil: 'domcontentloaded' });
-    await page.waitForSelector('input[type="email"]', { timeout: 10000 });
+    await expect(page.getByTestId("email-input")).toBeVisible({ timeout: 10000 });
 
     await page.getByTestId('email-input').fill(STUDENT_EMAIL);
     await page.getByTestId('password-input').fill(STUDENT_PASSWORD);
