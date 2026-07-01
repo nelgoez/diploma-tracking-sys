@@ -1,10 +1,10 @@
 import { expect, test } from '@playwright/test';
 
-const PROD_URL = process.env.PROD_URL || 'https://diplomatrackingsystem.qzz.io';
-const ADMIN_EMAIL = process.env.TEST_ADMIN_EMAIL || '';
-const ADMIN_PASSWORD = process.env.TEST_ADMIN_PASSWORD || '';
-const STUDENT_EMAIL = process.env.TEST_STUDENT_EMAIL || '';
-const STUDENT_PASSWORD = process.env.TEST_STUDENT_PASSWORD || '';
+const PROD_URL = process.env.PROD_BASE_URL || 'https://diplomatrackingsystem.qzz.io';
+const ADMIN_EMAIL = process.env.PROD_ADMIN_EMAIL || '';
+const ADMIN_PASSWORD = process.env.PROD_ADMIN_PASSWORD || '';
+const STUDENT_EMAIL = process.env.PROD_STUDENT_EMAIL || '';
+const STUDENT_PASSWORD = process.env.PROD_STUDENT_PASSWORD || '';
 
 test.describe('@prod Production Validation', () => {
   test('@prod page loads and login form is visible', async ({ page }) => {
