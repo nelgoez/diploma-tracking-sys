@@ -19,7 +19,7 @@ export default defineConfig({
     ignoreHTTPSErrors: true,
     headless: IS_CI,
     video: IS_CI ? 'on' : 'off',
-    trace: 'off',
+    trace: "on-first-retry",
     ...(VERCEl_BYPASS && {
       extraHTTPHeaders: { 'x-vercel-protection-bypass': VERCEl_BYPASS },
     }),
