@@ -9,6 +9,7 @@ export default defineConfig({
   globalSetup: './tests/e2e/global-setup',
   grep: process.env.TEST_GREP ? new RegExp(process.env.TEST_GREP) : undefined,
   use: {
+    testIdAttribute: "data-testid",
     baseURL: process.env.BASE_URL || 'http://localhost:5173',
     trace: 'on-first-retry',
     video: CI ? 'on' : 'off',
