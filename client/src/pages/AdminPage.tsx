@@ -1,6 +1,7 @@
 import {
   ChevronRight as ChevronRightIcon,
   ExpandMore as ExpandMoreIcon,
+  PersonAdd as PersonAddIcon,
   Search as SearchIcon,
 } from '@mui/icons-material';
 import {
@@ -11,8 +12,16 @@ import {
   Chip,
   CircularProgress,
   Collapse,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  FormControl,
   IconButton,
   InputAdornment,
+  InputLabel,
+  MenuItem,
+  Select,
   Table,
   TableBody,
   TableCell,
@@ -20,7 +29,6 @@ import {
   TableHead,
   TablePagination,
   TableRow,
-
   TextField,
   Typography,
 } from '@mui/material';
@@ -125,6 +133,27 @@ export function AdminPage() {
     }
   }, [tab, pagination.page, pagination.limit, debouncedSearch]);
 
+  const [userDialog, setUserDialog] = useState(false);
+  const [newUser, setNewUser] = useState({ email: '', password: '', name: '', role: 'estudiante' });
+  const [userError, setUserError] = useState('');
+
+  const handleCreateUser = async () => {
+    setUserError('');
+    if (!newUser.email || !newUser.password || !newUser.name) {
+      setUserError('Email, password, and name are required');
+      return;
+    }
+    try {
+      const token = localStorage.getItem('token') || '';
+      await api.post('/admin/users', newUser, token);
+      setUserDialog(false);
+      setNewUser({ email: '', password: '', name: '', role: 'estudiante' });
+    }
+    catch (err) {
+      setUserError(err instanceof Error ? err.message : 'Failed to create user');
+    }
+  };
+
   const tabs = [
     { key: 'dashboard' as const, label: 'Dashboard' },
     { key: 'students' as const, label: 'Students' },
@@ -158,9 +187,69 @@ export function AdminPage() {
               </Box>
             )
           : (
-              <AdminStatsGrid stats={stats} />
+              <>
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+                  <Button
+                    variant="contained"
+                    size="small"
+                    startIcon={<PersonAddIcon />}
+                    onClick={() => setUserDialog(true)}
+                  >
+                    Create User
+                  </Button>
+                </Box>
+                <AdminStatsGrid stats={stats} />
+              </>
             )
       )}
+
+      <Dialog open={userDialog} onClose={() => setUserDialog(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Create User</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+            <TextField
+              label="Email"
+              type="email"
+              size="small"
+              value={newUser.email}
+              onChange={e => setNewUser(prev => ({ ...prev, email: e.target.value }))}
+            />
+            <TextField
+              label="Name"
+              size="small"
+              value={newUser.name}
+              onChange={e => setNewUser(prev => ({ ...prev, name: e.target.value }))}
+            />
+            <TextField
+              label="Password"
+              type="password"
+              size="small"
+              value={newUser.password}
+              onChange={e => setNewUser(prev => ({ ...prev, password: e.target.value }))}
+            />
+            <FormControl size="small">
+              <InputLabel>Role</InputLabel>
+              <Select
+                value={newUser.role}
+                label="Role"
+                onChange={e => setNewUser(prev => ({ ...prev, role: e.target.value }))}
+              >
+                <MenuItem value="estudiante">Student</MenuItem>
+                <MenuItem value="coordinador">Coordinator</MenuItem>
+                <MenuItem value="admin">Admin</MenuItem>
+                <MenuItem value="sysadmin">Sysadmin</MenuItem>
+              </Select>
+            </FormControl>
+            {userError && (
+              <Typography variant="caption" color="error">{userError}</Typography>
+            )}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setUserDialog(false)}>Cancel</Button>
+          <Button variant="contained" onClick={handleCreateUser}>Create</Button>
+        </DialogActions>
+      </Dialog>
 
       {tab === 'students' && (
         <Card>

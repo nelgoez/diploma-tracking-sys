@@ -1,5 +1,7 @@
+import { Download as DownloadIcon } from '@mui/icons-material';
 import {
   Box,
+  Button,
   Card,
   CardContent,
   Chip,
@@ -20,6 +22,7 @@ interface CertificateResponse {
   id: string
   student_id: string
   course_id: string
+  enrollment_id?: string
   issue_date: string
   status: 'approved' | 'pending' | 'rejected'
   qualification: number | null
@@ -30,6 +33,7 @@ interface CertificateResponse {
 
 interface Certificate {
   id: string
+  enrollmentId?: string
   courseName: string
   studentName?: string
   studentEmail?: string
@@ -41,6 +45,7 @@ interface Certificate {
 function mapResponse(certs: CertificateResponse[]): Certificate[] {
   return certs.map(c => ({
     id: c.id,
+    enrollmentId: c.enrollment_id,
     courseName: c.course?.name ?? c.id,
     studentName: c.student?.name,
     studentEmail: c.student?.email,
@@ -48,6 +53,28 @@ function mapResponse(certs: CertificateResponse[]): Certificate[] {
     status: c.status,
     qualification: c.qualification,
   }));
+}
+
+async function handleDownloadDiploma(enrollmentId: string) {
+  const token = localStorage.getItem('token') || '';
+  try {
+    const resp = await fetch(`/api/v1/diplomas/${enrollmentId}/download`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!resp.ok) { throw new Error('Download failed'); }
+    const blob = await resp.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `diploma-${enrollmentId}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+  catch {
+    // silently fail
+  }
 }
 
 export function CertificatesPage() {
@@ -129,6 +156,7 @@ export function CertificatesPage() {
                           <TableCell>{t('table.date')}</TableCell>
                           <TableCell>{t('table.qualification')}</TableCell>
                           <TableCell>{t('table.status')}</TableCell>
+                          <TableCell>Actions</TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
@@ -155,6 +183,18 @@ export function CertificatesPage() {
                                 color={getStatusColor(cert.status)}
                                 size="small"
                               />
+                            </TableCell>
+                            <TableCell>
+                              {cert.enrollmentId && cert.status === 'approved' && (
+                                <Button
+                                  size="small"
+                                  variant="outlined"
+                                  startIcon={<DownloadIcon fontSize="small" />}
+                                  onClick={() => handleDownloadDiploma(cert.enrollmentId!)}
+                                >
+                                  Diploma
+                                </Button>
+                              )}
                             </TableCell>
                           </TableRow>
                         ))}
