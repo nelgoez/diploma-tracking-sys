@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type { AuthContext, JwtPayload } from '../middleware/auth';
 import { zValidator } from '@hono/zod-validator';
 import { Hono } from 'hono';
@@ -5,6 +6,7 @@ import { jwtVerify, SignJWT } from 'jose';
 import { z } from 'zod';
 import { supabase, supabaseAdmin } from '../db/supabase';
 import { authenticate } from '../middleware/auth';
+import { MOCK_STUDENTS } from '../services/mock-data';
 
 const auth = new Hono();
 
@@ -58,6 +60,28 @@ function parseExpiryToSeconds(expiry: string): number {
     default: return 900;
   }
 }
+
+auth.post('/demo', async (c) => {
+  const demoUser = MOCK_STUDENTS[0];
+  const userId = `demo-${randomUUID().slice(0, 8)}`;
+  const email = demoUser.email;
+  const role: AuthContext['role'] = 'admin';
+
+  const accessToken = await createAccessToken(userId, email, role);
+  const refreshToken = await createRefreshToken(userId, email, role);
+
+  return c.json({
+    access_token: accessToken,
+    refresh_token: refreshToken,
+    demo: true,
+    user: {
+      id: userId,
+      email,
+      name: `${demoUser.firstName} ${demoUser.lastName}`,
+      role,
+    },
+  });
+});
 
 auth.post('/login', zValidator('json', loginSchema), async (c) => {
   const { email, password } = c.req.valid('json');

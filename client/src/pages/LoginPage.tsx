@@ -5,6 +5,7 @@ import {
   Card,
   CardContent,
   CircularProgress,
+  Divider,
   TextField,
   Typography,
 } from '@mui/material';
@@ -13,6 +14,14 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { LanguageSwitcher } from '../components/LanguageSwitcher';
 import { api } from '../lib/api';
+
+function handleAuthResponse(response: { access_token: string, refresh_token: string, user: { id: string, name: string, role: string } }) {
+  localStorage.setItem('token', response.access_token);
+  localStorage.setItem('refreshToken', response.refresh_token);
+  localStorage.setItem('userId', response.user.id);
+  localStorage.setItem('userRole', response.user.role);
+  localStorage.setItem('userName', response.user.name);
+}
 
 export function LoginPage() {
   const { t } = useTranslation();
@@ -29,17 +38,27 @@ export function LoginPage() {
 
     try {
       const response = await api.login(email, password);
-
-      localStorage.setItem('token', response.access_token);
-      localStorage.setItem('refreshToken', response.refresh_token);
-      localStorage.setItem('userId', response.user.id);
-      localStorage.setItem('userRole', response.user.role);
-      localStorage.setItem('userName', response.user.name);
-
+      handleAuthResponse(response);
       void navigate('/app/dashboard');
     }
     catch (err) {
       setError(err instanceof Error ? err.message : t('login.error'));
+    }
+    finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDemo = async () => {
+    setError('');
+    setLoading(true);
+    try {
+      const response = await api.post<{ access_token: string, refresh_token: string, user: { id: string, name: string, role: string } }>('/auth/demo', {});
+      handleAuthResponse(response);
+      void navigate('/app/dashboard');
+    }
+    catch (err) {
+      setError(err instanceof Error ? err.message : 'Demo access unavailable');
     }
     finally {
       setLoading(false);
@@ -67,6 +86,23 @@ export function LoginPage() {
           <Typography variant="body2" color="text.secondary" textAlign="center" sx={{ mb: 3 }}>
             {t('app.subtitle')}
           </Typography>
+
+          <Button
+            variant="contained"
+            fullWidth
+            size="large"
+            onClick={() => { void handleDemo(); }}
+            disabled={loading}
+            sx={{ mb: 2 }}
+            color="secondary"
+            data-testid="demo-btn"
+          >
+            {loading ? <CircularProgress size={24} /> : 'Demo Access — Explore the System'}
+          </Button>
+
+          <Divider sx={{ my: 2 }}>
+            <Typography variant="caption" color="text.secondary">or sign in</Typography>
+          </Divider>
 
           <form onSubmit={(e) => { void handleSubmit(e); }}>
             {error && (
@@ -99,7 +135,7 @@ export function LoginPage() {
 
             <Button
               type="submit"
-              variant="contained"
+              variant="outlined"
               fullWidth
               size="large"
               disabled={loading}
