@@ -1,4 +1,4 @@
-name: Smoke Tests — Daily
+name: Smoke Tests — Daily + Allure Reports
 
 on:
   schedule:
@@ -42,7 +42,7 @@ jobs:
           bun test __tests__/smoke.test.ts --timeout 15000
 
   client-smoke:
-    name: Client Build Smoke
+    name: Client Build + E2E + Allure
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -59,7 +59,34 @@ jobs:
       - name: Install dependencies
         run: bun install
 
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('client/bun.lock') }}
+
+      - name: Install Playwright Chromium
+        run: bun playwright install chromium --with-deps
+
       - name: Build
         run: bun run build
         env:
           VITE_API_URL: ${{ secrets.VITE_API_URL }}
+
+      - name: Run E2E smoke tests with Allure
+        continue-on-error: true
+        run: ALLURE_DIR=allure-results bun run test:e2e -- --grep @smoke
+        env:
+          BASE_URL: 'http://localhost:5173'
+          CI: 'true'
+
+      - name: Generate Allure Report
+        if: always()
+        run: allure generate allure-results --clean -o allure-report
+
+      - name: Upload Allure Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-report
+          path: client/allure-report/

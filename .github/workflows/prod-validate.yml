@@ -33,16 +33,29 @@ jobs:
         working-directory: client
         run: bun playwright install chromium --with-deps
 
-      - name: Run @prod validation tests
+      - name: Run @prod validation tests with Allure
         working-directory: client
         env:
           CI: 'true'
+          ALLURE_DIR: allure-results-prod
           PROD_BASE_URL: 'https://nelgoez-diploma-tracking-sys.vercel.app'
           PROD_ADMIN_EMAIL: 'admin@dts.unc.edu.ar'
           PROD_ADMIN_PASSWORD: 'Admin123456!'
           PROD_STUDENT_EMAIL: 'nahuelgomez.cti@gmail.com'
           PROD_STUDENT_PASSWORD: 'Test123456!'
         run: bun validate:prod
+
+      - name: Generate Allure Report
+        if: always()
+        working-directory: client
+        run: allure generate allure-results-prod --clean -o allure-report-prod
+
+      - name: Upload Allure Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-report-prod
+          path: client/allure-report-prod/
 
       - name: Upload test report on failure
         if: failure()

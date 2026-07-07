@@ -2,6 +2,7 @@ import { expect, test } from './auth';
 
 test.describe('@smoke DTS Full Business Flow', () => {
   test('@critical admin can view dashboard with stats', async ({ adminPage }) => {
+    test.info().annotations.push({ type: 'story', description: 'DTS-42' });
     await adminPage.expectLoaded();
     await expect(adminPage.getUserName()).toBeVisible();
     await adminPage.expectUserRole(/admin/);

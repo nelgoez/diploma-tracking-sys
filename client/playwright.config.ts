@@ -1,11 +1,19 @@
+import type { ReporterDescription } from '@playwright/test';
 import { defineConfig, devices } from '@playwright/test';
 
 const CI = !!process.env.CI;
+
+const reporters: ReporterDescription[] = [['html']];
+
+if (process.env.ALLURE_DIR) {
+  reporters.push(['allure-playwright', { outputFolder: process.env.ALLURE_DIR }]);
+}
 
 export default defineConfig({
   testDir: './tests/e2e',
   timeout: 30000,
   retries: CI ? 2 : 1,
+  reporter: reporters,
   globalSetup: './tests/e2e/global-setup',
   grep: process.env.TEST_GREP ? new RegExp(process.env.TEST_GREP) : undefined,
   use: {
