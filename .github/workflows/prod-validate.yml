@@ -38,7 +38,7 @@ jobs:
         env:
           CI: 'true'
           ALLURE_DIR: allure-results-prod
-          PROD_BASE_URL: 'https://nelgoez-diploma-tracking-sys.vercel.app'
+          PROD_BASE_URL: 'https://diplomatrackingsystem.qzz.io'
           PROD_ADMIN_EMAIL: 'admin@dts.unc.edu.ar'
           PROD_ADMIN_PASSWORD: 'Admin123456!'
           PROD_STUDENT_EMAIL: 'nahuelgomez.cti@gmail.com'
@@ -47,8 +47,9 @@ jobs:
 
       - name: Generate Allure Report
         if: always()
+        shell: bash
         working-directory: client
-        run: allure generate allure-results-prod --clean -o allure-report-prod
+        run: bunx allure generate allure-results-prod --clean -o allure-report-prod
 
       - name: Upload Allure Report
         if: always()
