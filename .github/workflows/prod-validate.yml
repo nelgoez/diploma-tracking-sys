@@ -73,6 +73,8 @@ jobs:
     needs: prod-validate
     if: ${{ always() && (github.event_name == 'push' || github.event.inputs.generate_allure != 'false') }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
         with:
