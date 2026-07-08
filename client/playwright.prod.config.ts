@@ -11,7 +11,7 @@ export default defineConfig({
   expect: { timeout: 15000 },
   reporter: [
     ['list'],
-    ['allure-playwright', { outputFolder: 'allure-results-prod' }],
+    ['allure-playwright', { resultsDir: 'allure-results-prod' }],
   ],
   retries: IS_CI ? 1 : 0,
   use: {

@@ -6,7 +6,7 @@ const CI = !!process.env.CI;
 const reporters: ReporterDescription[] = [['html']];
 
 if (process.env.ALLURE_DIR) {
-  reporters.push(['allure-playwright', { outputFolder: process.env.ALLURE_DIR }]);
+  reporters.push(['allure-playwright', { resultsDir: process.env.ALLURE_DIR }]);
 }
 
 export default defineConfig({
@@ -17,7 +17,7 @@ export default defineConfig({
   globalSetup: './tests/e2e/global-setup',
   grep: process.env.TEST_GREP ? new RegExp(process.env.TEST_GREP) : undefined,
   use: {
-    testIdAttribute: "data-testid",
+    testIdAttribute: 'data-testid',
     baseURL: process.env.BASE_URL || 'http://localhost:5173',
     trace: 'on-first-retry',
     video: CI ? 'on' : 'off',
