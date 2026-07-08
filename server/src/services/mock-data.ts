@@ -7,7 +7,7 @@ const MOCK_STUDENTS: AcademicStudent[] = [
     firstName: 'Nahuel Leonardo Elias',
     lastName: 'Gomez',
     email: 'nahuelgomez.cti@gmail.com',
-    documentNumber: '36139752',
+    documentNumber: '36139001',
   },
   {
     id: 'guarani-28456789',

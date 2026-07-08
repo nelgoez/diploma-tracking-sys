@@ -6,6 +6,7 @@ import {
   EmojiEvents as DiplomaIcon,
   People as PeopleIcon,
   School as SchoolIcon,
+  Science as ScienceIcon,
   TrendingUp as TrendingUpIcon,
 } from '@mui/icons-material';
 import {
@@ -301,8 +302,17 @@ export function DashboardPage() {
     );
   }
 
+  const isDemo = !localStorage.getItem('refreshToken');
+
   return (
     <Box>
+      {isDemo && (
+        <Alert icon={<ScienceIcon />} severity="info" sx={{ mb: 2 }} data-testid="demo-banner">
+          <Typography variant="body2">
+            <strong>🔬 Demo Mode</strong> — exploring with mock data. Real login is available in the menu.
+          </Typography>
+        </Alert>
+      )}
       <Typography variant="h4" gutterBottom>
         {`${t('dashboard.welcome')}, ${localStorage.getItem('userName') || t('dashboard.user_fallback')}`}
       </Typography>
