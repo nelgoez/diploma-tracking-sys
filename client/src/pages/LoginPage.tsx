@@ -53,7 +53,7 @@ export function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      const response = await api.post<{ access_token: string, refresh_token: string, user: { id: string, name: string, role: string } }>('/auth/demo', {});
+      const response = await api.postPublic<{ access_token: string, refresh_token: string, user: { id: string, name: string, role: string } }>('/auth/demo', {});
       handleAuthResponse(response);
       void navigate('/app/dashboard');
     }
