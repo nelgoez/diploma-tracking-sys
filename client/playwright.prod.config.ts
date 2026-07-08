@@ -1,21 +1,18 @@
-import type { ReporterDescription } from '@playwright/test';
 import { defineConfig } from '@playwright/test';
 
 const IS_CI = !!process.env.CI;
 const VERCEl_BYPASS = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
 const VERCEl_SHARE = process.env.VERCEL_SHARE_TOKEN;
 
-const reporters: ReporterDescription[] = [['list']];
-if (process.env.ALLURE_DIR) {
-  reporters.push(['allure-playwright', { outputFolder: process.env.ALLURE_DIR }]);
-}
-
 export default defineConfig({
   testDir: './tests/e2e',
   testMatch: 'prod-smoke.spec.ts',
   timeout: 60000,
   expect: { timeout: 15000 },
-  reporter: reporters,
+  reporter: [
+    ['list'],
+    ['allure-playwright', { outputFolder: 'allure-results-prod' }],
+  ],
   retries: IS_CI ? 1 : 0,
   use: {
     baseURL:
