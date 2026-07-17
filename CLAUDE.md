@@ -1,117 +1,77 @@
-# Project Memory
+# DTS — Diploma Tracking System
 
-> **Purpose**: Operational context loaded every AI session.
-> **Usage**: AI reads this file automatically at session start.
-> **Customize**: Replace `[PLACEHOLDER]` values with your project specifics.
-> **Note**: This is the **AI-Driven Project Starter** template. Each project that uses this starter should fill in the placeholder values below.
+> **Diploma Tracking System** for Universidad Nacional de Córdoba.
+> Supabase + Hono (server) + React/Vite (client) + Vercel (deploy).
+> Two repos: `agentic-diplo-track-sys` (agentic hub) and `diploma-tracking-sys` (app).
 
 ---
 
 ## Quick Start
 
 ```bash
-# PROJECT STARTER — GETTING ORIENTED:
-# When you start a new session, load these context files FIRST:
-# 1. .context/business-data-map.md     → System flows and entities
-# 2. .context/api-architecture.md      → API endpoints reference
-# 3. .context/project-dev-guide.md     → How to develop features
-# 4. .context/project-test-guide.md    → What to test and why
-# 5. .context/guidelines/TAE/kata-ai-index.md → How to write tests (KATA)
+# Context load order (read these at session start):
+# 1. .env                        → env vars (gitignored, real values on disk)
+# 2. server/.env + client/.env   → per-scope env vars
+# 3. server/src/routes/          → API endpoint inventory
+# 4. client/src/                 → Frontend components & pages
 
-# UNDERSTAND THE WORKFLOW:
-# This project follows the AI-Driven Software Project Blueprint (14 Fases).
-# Synchronous fases (1-3): Constitution → Architecture → Infrastructure (one-time)
-# Asynchronous fases (4-14): Specification → ... → Shift-Right Testing (iterative)
-# Full workflow: .prompts/README.md
-
-# PLAN BEFORE CODING:
-# Development follows a Plan → Code → Review workflow. Never jump straight to code.
-# Dev workflow: .prompts/us-dev-workflow.md (Fases 6-9)
-# QA workflow:  .prompts/us-qa-workflow.md  (Fases 10-12)
+# Common commands (run from repo root or respective scope):
+cd server  && bun run dev        # Dev server on :3000
+cd client  && bun run dev        # Dev client on :5173
+bun run lint                      # Lint all (server + client)
+bun run lint:fix                  # Auto-fix lint
+bun run format                    # Format with Prettier
+bun run typecheck                 # TypeScript check both scopes
+bun run test                      # Run tests (server)
+cd client  && bun run test:e2e   # Playwright E2E
 ```
 
-**Common commands:**
+**Key URLs:**
 
-```bash
-bun run lint              # Lint codebase
-bun run lint:fix          # Auto-fix lint issues
-bun run format            # Format with Prettier
-bun run format:check      # Check formatting
-bun run up                # Update template from upstream
-bun run api:sync          # Sync OpenAPI spec + generate types
-bun run xray              # Xray TMS CLI
-```
-
-**Generate/Update Project Documentation:**
-
-```bash
-# Use this prompt to regenerate README.md and update CLAUDE.md
-@.prompts/project-doc-setup.md
-```
+| Environment | API | Client | Supabase Studio |
+|---|---|---|---|
+| Local | `http://localhost:3000/api/v1` | `http://localhost:5173` | `https://supabase.com/dashboard/project/vbjhxlezqhkmhpuypkvf` |
+| Staging | `https://server-git-staging-nelgoezs-projects.vercel.app/api/v1` | `https://nelgoez-diploma-tracking-sys.vercel.app` | — |
+| Production | `https://server-git-main-nelgoezs-projects.vercel.app/api/v1` | `https://diplomatrackingsystem.qzz.io` | — |
 
 ---
 
-## Critical Reminders
+## Critical Rules
 
-> These rules override defaults and must always be in context.
+> Override defaults. Must always be in context.
 
-1. **This is a project starter template**: All sections with `[PLACEHOLDER]` or `{{VARIABLE}}` values must be filled in per-project. Do not assume defaults.
-2. **Login Credentials**: ALWAYS read from `.env` file — NEVER hardcode or guess passwords.
-   - Example keys: `LOCAL_USER_EMAIL` / `LOCAL_USER_PASSWORD`, `STAGING_USER_EMAIL` / `STAGING_USER_PASSWORD`
-3. **Plan before coding**: Always produce a plan (spec / implementation plan) before writing code or tests.
-4. **No AI attribution in commits**: Never include "Generated with Claude Code", "Co-Authored-By: Claude", or similar lines in commit messages.
-5. **Shift-Left**: Evaluate Acceptance Criteria for clarity, testability, and completeness. Raise questions only when genuine gaps exist — never force questions to fill a checklist.
-6. **Confirm before push to main**: Never push to `main` without explicit user confirmation.
-7. **14-Fase Workflow**: Follow the fase order (1-14). Do not skip fases — each builds on the previous.
-8. **Exploratory before Automation**: Do not automate tests (Fase 12) before exploratory testing (Fase 10) validates the feature.
-9. **Unit tests in implementation**: Unit tests belong in Fase 7 (Implementation), NOT in Fase 12 (Automation).
-10. **Git History Management**:
-    - NEVER rewrite pushed history (`rebase`, `amend` on pushed commits)
-    - NEVER force push to any shared branch
-    - NEVER delete remote branches without confirmation
-    - ALWAYS add forward (new commits to fix, not rewrite)
-    - ALWAYS preserve merge history
-11. **Quality Verification**: After code changes, verify in order: run tests → check types → lint. Do not skip steps.
-12. **File Operations**: Always read a file before editing it. Preserve existing formatting and indentation. Never overwrite files without reading first.
-13. **No Copy-Paste in Prompts**: All prompts are @-loadable. Never ask users to copy-paste prompt content. Use `[TAG_TOOL]` pseudocode and `{{VARIABLES}}` for dynamic content.
-14. **Playwright CLI Usage**: For browser automation, load the `/playwright-cli` skill. It provides screenshots, tracing, video recording, session management, and request mocking. See `.claude/skills/playwright-cli/` for details.
-15. [Add project-specific reminders here — e.g., "SPA and API are on different hosts — use correct base URLs"]
+1. **Credentials**: ALWAYS from `.env`. NEVER hardcode. NEVER commit.
+2. **Plan before code**: Produce a plan before writing code or tests.
+3. **No AI attribution**: Never "Generated with Claude Code", "Co-Authored-By: Claude" in commits.
+4. **Confirm before push to main**: Never push to `main` without explicit user confirmation.
+5. **Git History**:
+   - NEVER rewrite pushed history (`rebase`, `amend`)
+   - NEVER force push
+   - ALWAYS add forward
+6. **Quality Gate**: tests → types → lint in order. Never skip.
+7. **Read before edit**: Always read a file before editing. Preserve formatting.
+8. **SPA & API on different hosts**: Use correct base URLs (client on :5173, server on :3000).
 
 ---
 
 ## Project Variables
 
-> **Purpose**: Centralized project configuration referenced by all `.prompts/` and templates via `{{VARIABLE_NAME}}` syntax.
-> **Usage**: Fill in real values once here. All prompts that use `{{VARIABLES}}` will auto-adapt.
-> **Rationale**: Prevents multi-file maintenance — change a value once, it propagates everywhere.
-
-| Variable                | Description                                         | Example Value                 |
-| ----------------------- | --------------------------------------------------- | ----------------------------- |
-| `{{PROJECT_NAME}}`      | Project name                                        | MyProject                     |
-| `{{BACKEND_REPO}}`      | Relative path to backend repository                 | ../my-backend                 |
-| `{{BACKEND_STACK}}`     | Backend technology stack                            | Node.js + Express             |
-| `{{BACKEND_ENTRY}}`     | Backend source entry point                          | src/                          |
-| `{{FRONTEND_REPO}}`     | Relative path to frontend repository                | ../my-frontend                |
-| `{{FRONTEND_STACK}}`    | Frontend technology stack                           | React + TypeScript            |
-| `{{FRONTEND_ENTRY}}`    | Frontend source entry point                         | src/                          |
-| `{{DB_TYPE}}`           | Database engine                                     | PostgreSQL                    |
-| `{{DB_MCP_LOCAL}}`      | MCP server name for local DB                        | myproject-local-db            |
-| `{{DB_MCP_STAGING}}`    | MCP server name for staging DB                      | myproject-staging-db          |
-| `{{API_MCP_LOCAL}}`     | MCP server name for local API                       | myproject-local-api           |
-| `{{API_MCP_STAGING}}`   | MCP server name for staging API                     | myproject-staging-api         |
-| `{{SPA_URL_LOCAL}}`     | Frontend URL (local)                                | localhost:3000                |
-| `{{SPA_URL_STAGING}}`   | Frontend URL (staging)                              | staging.myproject.com         |
-| `{{API_URL_LOCAL}}`     | API base URL (local)                                | localhost:3000/api            |
-| `{{API_URL_STAGING}}`   | API base URL (staging)                              | api-staging.myproject.com     |
-| `{{ISSUE_TRACKER}}`     | Issue tracking tool                                 | Jira                          |
-| `{{ISSUE_TRACKER_CLI}}` | CLI command to query tickets                        | jira-cli / gh issue           |
-| `{{PROJECT_KEY}}`       | Project key in issue tracker (e.g., PROJ, OB, UPEX) | PROJ                          |
-| `{{TMS_CLI}}`           | Test management CLI command                         | bun xray                      |
-| `{{DEFAULT_ENV}}`       | Default testing environment                         | staging                       |
-| `{{JIRA_URL}}`          | Jira instance base URL                              | https://company.atlassian.net |
-| `{{WEBAPP_DOMAIN}}`     | Domain of the web application under test            | myproject.com                 |
-
-**Note**: Variables are substituted lazily — a prompt containing `{{API_URL_STAGING}}` will read this table at load time. Keep values accurate.
+| Variable | Description | Value |
+|---|---|---|
+| `{{PROJECT_NAME}}` | Project name | DTS — Diploma Tracking System |
+| `{{BACKEND_STACK}}` | Backend stack | Hono + Bun + TypeScript |
+| `{{FRONTEND_STACK}}` | Frontend stack | React + Vite + MUI |
+| `{{DB_TYPE}}` | Database | PostgreSQL (Supabase) |
+| `{{SPA_URL_LOCAL}}` | Frontend local | `http://localhost:5173` |
+| `{{SPA_URL_STAGING}}` | Frontend staging | `https://nelgoez-diploma-tracking-sys.vercel.app` |
+| `{{SPA_URL_PROD}}` | Frontend prod | `https://diplomatrackingsystem.qzz.io` |
+| `{{API_URL_LOCAL}}` | API local | `http://localhost:3000/api/v1` |
+| `{{API_URL_STAGING}}` | API staging | `https://server-git-staging-nelgoezs-projects.vercel.app/api/v1` |
+| `{{API_URL_PROD}}` | API prod | `https://server-git-main-nelgoezs-projects.vercel.app/api/v1` |
+| `{{ISSUE_TRACKER}}` | Issue tracker | Jira |
+| `{{PROJECT_KEY}}` | Jira project key | DTS |
+| `{{JIRA_URL}}` | Jira URL | `https://diplo-track-sys.atlassian.net` |
+| `{{WEBAPP_DOMAIN}}` | Production domain | `diplomatrackingsystem.qzz.io` |
 
 ---
 
@@ -654,34 +614,38 @@ See "Quick Start" above for common commands.
 
 ## Known Issues & Blockers
 
-| Issue               | Severity          | Status          |
-| ------------------- | ----------------- | --------------- |
-| [Issue description] | [HIGH/MEDIUM/LOW] | [Open/Resolved] |
-
----
-
-## Session Log
-
-> Log significant changes per session. Delete old entries as needed.
-
-### [DATE] - [Session Title]
-
-- [Change 1]
-- [Change 2]
-- Result: [Outcome]
+| Issue | Severity | Status |
+|---|---|---|
+| `prod-validate.yml` hardcoded creds | HIGH | FIXED (moved to GH secrets) |
+| `JWT_SECRET` placeholder in `.env` | HIGH | FIXED (generated real secret) |
+| `GUARANI_API_TOKEN` placeholder | MEDIUM | Open (needs real token) |
+| `SUPABASE_ACCESS_TOKEN` in `.env` | MEDIUM | FIXED (synced from opencode.json) |
+| Node.js 20 deprecation in CI actions | LOW | Open (upgrade actions/checkout to v5) |
 
 ---
 
 ## Next Actions
 
-1. **[Priority 1]**
-   - [ ] [Subtask]
-   - [ ] [Subtask]
+1. **[HIGH] Phase 6 Backlog**
+   - [x] Notifications: mark-all-as-read endpoint + client button
+   - [x] Notifications: snackbar toast on bulk action
+   - [ ] Override expiry cron: verify deployment
+   - [ ] Guaraní sync: fill real API token
+   - [ ] Coordinator dashboard: add filters
 
-2. **[Priority 2]**
-   - [ ] [Subtask]
+2. **[MED] Env & CI**
+   - [x] JWT_SECRET generated
+   - [x] CRON_SECRET added to root .env
+   - [x] `prod-validate.yml` creds → GH secrets
+   - [ ] Upgrade `actions/checkout@v4` → `v5`, `actions/cache@v4` → `v5`
+   - [ ] staging → main PR
+
+3. **[LOW] Polish**
+   - [ ] Notification toast/snackbar on server-pushed events
+   - [ ] Coordinator dashboard filters (track, eligibility, date range)
+   - [ ] Guaraní real API integration
 
 ---
 
-**Last Updated**: [DATE]
+**Last Updated**: 2026-07-17
 **Session Count**: [N]

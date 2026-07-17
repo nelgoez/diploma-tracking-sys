@@ -188,6 +188,29 @@ export async function getNotifications(
   };
 }
 
+export async function markAllAsRead(studentId: string): Promise<number> {
+  const { data, error } = await notificationsTable()
+    .select('id')
+    .eq('student_id', studentId)
+    .eq('read', false);
+
+  if (error || !data || data.length === 0) {
+    return 0;
+  }
+
+  const ids = (data as Array<Record<string, string>>).map(r => r.id);
+  const { error: updateError } = await notificationsTable()
+    .update({ read: true } as never)
+    .in('id', ids);
+
+  if (updateError) {
+    console.error('[NotificationService] Mark all read failed:', updateError.message);
+    return 0;
+  }
+
+  return ids.length;
+}
+
 export async function markAsRead(notificationId: string): Promise<boolean> {
   const { error } = await notificationsTable()
     .update({ read: true } as never)
