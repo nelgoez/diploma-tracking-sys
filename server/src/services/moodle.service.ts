@@ -54,11 +54,44 @@ interface MoodleCourse {
   completed: boolean
 }
 
+let cachedToken: string | null = null;
+
+async function getMoodleToken(): Promise<string> {
+  if (cachedToken) return cachedToken;
+
+  const user = process.env.MOODLE_ADMIN_USER;
+  const pass = process.env.MOODLE_ADMIN_PASS;
+  const base = process.env.MOODLE_API_URL || 'https://campus.aulavirtual.unc.edu.ar';
+
+  if (user && pass) {
+    try {
+      const url = `${base}/login/token.php?${new URLSearchParams({
+        username: user,
+        password: pass,
+        service: 'moodle_mobile_app',
+      }).toString()}`;
+      const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
+      const json = await res.json() as { token?: string, error?: string };
+      if (json.token) {
+        cachedToken = json.token;
+        return json.token;
+      }
+      console.warn('[Moodle] login/token.php failed:', json.error);
+    }
+    catch (err) {
+      console.warn('[Moodle] login/token.php error:', (err as Error).message);
+    }
+  }
+
+  const fallback = process.env.MOODLE_API_TOKEN;
+  if (fallback) return fallback;
+
+  throw new Error('No Moodle token available — set MOODLE_ADMIN_USER/PASS or MOODLE_API_TOKEN');
+}
+
 function moodleApiUrl(functionName: string, params: Record<string, string> = {}): string {
   const base = process.env.MOODLE_API_URL || 'https://campus.aulavirtual.unc.edu.ar';
-  const token = process.env.MOODLE_API_TOKEN || 'placeholder-token';
   const qs = new URLSearchParams({
-    wstoken: token,
     wsfunction: functionName,
     moodlewsrestformat: 'json',
     ...params,
@@ -75,7 +108,16 @@ async function moodleFetch<T>(
   const retryDelays = [1000, 4000, 9000];
 
   try {
-    const url = moodleApiUrl(functionName, params);
+    let url: string;
+    if (retries === 0) {
+      const token = await getMoodleToken();
+      url = moodleApiUrl(functionName, { ...params, wstoken: token });
+    } else {
+      // On retry, clear cached token (may have expired) and re-fetch
+      cachedToken = null;
+      const token = await getMoodleToken();
+      url = moodleApiUrl(functionName, { ...params, wstoken: token });
+    }
     const response = await fetch(url, {
       signal: AbortSignal.timeout(10000),
     });

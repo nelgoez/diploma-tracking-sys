@@ -1,0 +1,9 @@
+D:\Nahuel\Proyectos\UPEX\diploma-tracking-sys\docs\workflows\environments.md
+D:\Nahuel\Proyectos\UPEX\diploma-tracking-sys\docs\workflows\git-flow.md
+D:\Nahuel\Proyectos\UPEX\diploma-tracking-sys\docs\workflows\sync-openapi-guide.md
+D:\Nahuel\Proyectos\UPEX\diploma-tracking-sys\docs\workflows\test-automation-lifecycle.md
+D:\Nahuel\Proyectos\UPEX\diploma-tracking-sys\docs\workflows\test-manual-lifecycle.md
+D:\Nahuel\Proyectos\UPEX\diploma-tracking-sys\docs\workflows\update-template-guide.md
+D:\Nahuel\Proyectos\UPEX\diploma-tracking-sys\gh-pages-root\index.html
+D:\Nahuel\Proyectos\UPEX\diploma-tracking-sys\templates\mcp\README.md
+D:\Nahuel\Proyectos\UPEX\diploma-tracking-sys\templates\mcp\mcp-configuration-guide.md
