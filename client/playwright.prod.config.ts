@@ -9,6 +9,10 @@ export default defineConfig({
   testMatch: 'prod-smoke.spec.ts',
   timeout: 60000,
   expect: { timeout: 15000 },
+  reporter: [
+    ['list'],
+    ['allure-playwright', { resultsDir: 'allure-results-prod' }],
+  ],
   retries: IS_CI ? 1 : 0,
   use: {
     baseURL:
@@ -19,7 +23,7 @@ export default defineConfig({
     ignoreHTTPSErrors: true,
     headless: IS_CI,
     video: IS_CI ? 'on' : 'off',
-    trace: 'off',
+    trace: 'on-first-retry',
     ...(VERCEl_BYPASS && {
       extraHTTPHeaders: { 'x-vercel-protection-bypass': VERCEl_BYPASS },
     }),

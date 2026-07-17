@@ -5,8 +5,18 @@ import type {
 } from '../providers/certificate.provider';
 import { supabaseAdmin } from '../db/supabase';
 import { getMockCertificatesForStudent } from './mock-data';
+import { withRetry } from './resilient-adapter';
 
 const isMockMode = (): boolean => process.env.MOCK_MODE === 'true';
+
+async function isDemoStudent(studentId: string): Promise<boolean> {
+  const { data } = await supabaseAdmin
+    .from('students')
+    .select('is_demo')
+    .eq('id', studentId)
+    .single();
+  return data?.is_demo === true;
+}
 
 export interface MoodleCertificate {
   id: string
@@ -102,23 +112,10 @@ function moodleApiUrl(functionName: string, params: Record<string, string> = {})
 async function moodleFetch<T>(
   functionName: string,
   params: Record<string, string> = {},
-  retries = 0,
 ): Promise<T> {
-  const maxRetries = 3;
-  const retryDelays = [1000, 4000, 9000];
-
-  try {
-    let url: string;
-    if (retries === 0) {
-      const token = await getMoodleToken();
-      url = moodleApiUrl(functionName, { ...params, wstoken: token });
-    }
-    else {
-      // On retry, clear cached token (may have expired) and re-fetch
-      cachedToken = null;
-      const token = await getMoodleToken();
-      url = moodleApiUrl(functionName, { ...params, wstoken: token });
-    }
+  return withRetry(async () => {
+    const token = await getMoodleToken();
+    const url = moodleApiUrl(functionName, { ...params, wstoken: token });
     const response = await fetch(url, {
       signal: AbortSignal.timeout(10000),
     });
@@ -135,14 +132,7 @@ async function moodleFetch<T>(
     }
 
     return json;
-  }
-  catch (err) {
-    if (retries < maxRetries) {
-      await new Promise(r => setTimeout(r, retryDelays[retries]));
-      return moodleFetch<T>(functionName, params, retries + 1);
-    }
-    throw err;
-  }
+  }, { maxRetries: 3, backoffMs: [1000, 4000, 9000] });
 }
 
 async function findMoodleUserByEmail(email: string): Promise<MoodleUser | null> {
@@ -223,11 +213,6 @@ class MoodleServiceImpl implements MoodleService, CertificateProvider {
   }
 
   async fetchCertificates(studentId: string): Promise<Certificate[]> {
-    if (isMockMode()) {
-      console.log(`[MoodleService] Mock mode — returning demo certificates for student ${studentId}`);
-      return getMockCertificatesForStudent(studentId);
-    }
-
     const { data: student } = await supabaseAdmin
       .from('students')
       .select('email, name')
@@ -235,8 +220,18 @@ class MoodleServiceImpl implements MoodleService, CertificateProvider {
       .single();
 
     if (!student?.email) {
+      if (isMockMode()) {
+        console.log(`[MoodleService] Mock mode — returning demo certificates for student ${studentId}`);
+        return getMockCertificatesForStudent(studentId);
+      }
       console.warn(`[MoodleService] No email for student ${studentId}`);
       return [];
+    }
+
+    const demo = await isDemoStudent(studentId);
+    if (isMockMode() || demo) {
+      console.log(`[MoodleService] ${isMockMode() ? 'Mock mode' : `Demo user ${student.email}`} — returning mock certificates`);
+      return getMockCertificatesForStudent(studentId);
     }
 
     let moodleUser: MoodleUser | null = null;

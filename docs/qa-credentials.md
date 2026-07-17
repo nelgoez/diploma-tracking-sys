@@ -5,12 +5,12 @@
 
 ## Demo Users
 
-| Email                      | Password          | Role        | Capabilities                                                                         |
-| -------------------------- | ----------------- | ----------- | ------------------------------------------------------------------------------------ |
-| admin@dts.unc.edu.ar       | Admin123456!      | admin       | Full admin dashboard, user CRUD, track/course CRUD, Moodle sync, integration logs    |
-| nahuelgomez.cti@gmail.com  | Test123456!       | estudiante  | Student dashboard, progress view, eligibility check, exam registration, certificates |
-| coordinador@dts.unc.edu.ar | Coord123456!      | coordinador | Track management, enrollment, override creation, grade recording                     |
-| estudiante@dts.unc.edu.ar  | Estudiante123456! | estudiante  | Student dashboard, progress view, eligibility check, exam registration, certificates |
+| Email                      | Password     | Role        | Capabilities                                                                         |
+| -------------------------- | ------------ | ----------- | ------------------------------------------------------------------------------------ |
+| admin@dts.unc.edu.ar       | Admin123456! | admin       | Full admin dashboard, user CRUD, track/course CRUD, Moodle sync, integration logs    |
+| nahuelgomez.cti@gmail.com  | Test123456!  | estudiante  | Student dashboard, progress view, eligibility check, exam registration, certificates |
+| coordinador@dts.unc.edu.ar | Demo2024!    | coordinador | Track management, enrollment, override creation, grade recording                     |
+| estudiante@dts.unc.edu.ar  | Demo2024!    | estudiante  | Student dashboard, progress view, eligibility check, exam registration, certificates |
 
 ## Access Points
 
