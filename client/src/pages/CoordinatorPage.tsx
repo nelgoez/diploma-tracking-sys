@@ -61,6 +61,9 @@ export function CoordinatorPage() {
   const [students, setStudents] = useState<StudentRow[]>([]);
   const [search, setSearch] = useState('');
   const [eligibility, setEligibility] = useState('all');
+  const [examStatus, setExamStatus] = useState('all');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
   const [loading, setLoading] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [gradeDialogOpen, setGradeDialogOpen] = useState(false);
@@ -85,6 +88,9 @@ export function CoordinatorPage() {
       const params = new URLSearchParams({ track_id: trackId, limit: '100' });
       if (search) { params.set('search', search); }
       if (eligibility !== 'all') { params.set('eligibility', eligibility); }
+      if (examStatus !== 'all') { params.set('exam_status', examStatus); }
+      if (fromDate) { params.set('from_date', fromDate); }
+      if (toDate) { params.set('to_date', toDate); }
       const data = await api.get<{ data: StudentRow[] }>(`/coordinator/students?${params.toString()}`, token);
       setStudents(data.data || []);
     }
@@ -94,7 +100,7 @@ export function CoordinatorPage() {
     finally {
       setLoading(false);
     }
-  }, [token, search, eligibility]);
+  }, [token, search, eligibility, examStatus, fromDate, toDate]);
 
   useEffect(() => {
     void fetchTracks();
@@ -112,6 +118,9 @@ export function CoordinatorPage() {
     setGrades({});
     setSearch('');
     setEligibility('all');
+    setExamStatus('all');
+    setFromDate('');
+    setToDate('');
   };
 
   const handleSelectAll = (checked: boolean) => {
@@ -246,6 +255,23 @@ export function CoordinatorPage() {
                 <MenuItem value="false">No habilitados</MenuItem>
               </Select>
             </FormControl>
+            <FormControl size="small" sx={{ minWidth: 140 }}>
+              <InputLabel>Estado examen</InputLabel>
+              <Select
+                value={examStatus}
+                label="Estado examen"
+                onChange={e => setExamStatus(e.target.value)}
+              >
+                <MenuItem value="all">Todos</MenuItem>
+                <MenuItem value="inscripto">Inscripto</MenuItem>
+                <MenuItem value="aprobado">Aprobado</MenuItem>
+                <MenuItem value="desaprobado">Desaprobado</MenuItem>
+              </Select>
+            </FormControl>
+            <TextField size="small" type="date" label="Desde" value={fromDate}
+              onChange={e => setFromDate(e.target.value)} InputLabelProps={{ shrink: true }} sx={{ minWidth: 140 }} />
+            <TextField size="small" type="date" label="Hasta" value={toDate}
+              onChange={e => setToDate(e.target.value)} InputLabelProps={{ shrink: true }} sx={{ minWidth: 140 }} />
             {inscriptoCount > 0 && (
               <Button
                 variant="contained"

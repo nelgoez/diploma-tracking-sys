@@ -95,6 +95,9 @@ coordinator.get('/students', async (c) => {
   const trackId = c.req.query('track_id');
   const search = c.req.query('search');
   const eligibility = c.req.query('eligibility');
+  const examStatus = c.req.query('exam_status');
+  const fromDate = c.req.query('from_date');
+  const toDate = c.req.query('to_date');
   const page = Number.parseInt(c.req.query('page') || '1');
   const limit = Number.parseInt(c.req.query('limit') || '20');
   const offset = (page - 1) * limit;
@@ -120,6 +123,18 @@ coordinator.get('/students', async (c) => {
       `students.name.ilike.%${search}%,students.email.ilike.%${search}%,students.dni.ilike.%${search}%`,
       { referencedTable: 'students' },
     );
+  }
+
+  if (examStatus && examStatus !== 'all') {
+    enrollmentQuery = enrollmentQuery.eq('exam_status', examStatus);
+  }
+
+  if (fromDate) {
+    enrollmentQuery = enrollmentQuery.gte('exam_date', fromDate);
+  }
+
+  if (toDate) {
+    enrollmentQuery = enrollmentQuery.lte('exam_date', toDate);
   }
 
   const { data: enrollments, error, count } = await enrollmentQuery
