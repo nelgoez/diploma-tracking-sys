@@ -164,7 +164,7 @@ export function NotificationPopover() {
           <Typography variant="h6">Notificaciones</Typography>
           <Box sx={{ display: 'flex', gap: 1 }}>
             {unreadCount > 0 && (
-              <Button size="small" startIcon={<MarkReadIcon />} onClick={handleMarkAllRead}>
+              <Button size="small" startIcon={<MarkReadIcon />} onClick={() => { void handleMarkAllRead(); }}>
                 Todas leídas
               </Button>
             )}

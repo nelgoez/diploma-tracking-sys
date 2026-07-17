@@ -31,6 +31,8 @@ export default antfu({
     '**/*.yml',
     // Client i18n - typescript-eslint project service scope issue
     'client/src/i18n/index.tsx',
+    // Graphify output (auto-generated graph data)
+    'graphify-out/**',
   ],
 
   // Custom rules

@@ -57,7 +57,7 @@ interface MoodleCourse {
 let cachedToken: string | null = null;
 
 async function getMoodleToken(): Promise<string> {
-  if (cachedToken) return cachedToken;
+  if (cachedToken) { return cachedToken; }
 
   const user = process.env.MOODLE_ADMIN_USER;
   const pass = process.env.MOODLE_ADMIN_PASS;
@@ -84,7 +84,7 @@ async function getMoodleToken(): Promise<string> {
   }
 
   const fallback = process.env.MOODLE_API_TOKEN;
-  if (fallback) return fallback;
+  if (fallback) { return fallback; }
 
   throw new Error('No Moodle token available — set MOODLE_ADMIN_USER/PASS or MOODLE_API_TOKEN');
 }
@@ -112,7 +112,8 @@ async function moodleFetch<T>(
     if (retries === 0) {
       const token = await getMoodleToken();
       url = moodleApiUrl(functionName, { ...params, wstoken: token });
-    } else {
+    }
+    else {
       // On retry, clear cached token (may have expired) and re-fetch
       cachedToken = null;
       const token = await getMoodleToken();
