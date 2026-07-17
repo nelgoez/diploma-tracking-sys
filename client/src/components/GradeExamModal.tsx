@@ -83,7 +83,7 @@ export function GradeExamModal({ open, onClose, enrollmentId, studentName, onGra
       }
     };
 
-    fetchEnrollments();
+    void fetchEnrollments();
   }, [open, enrollmentId]);
 
   const validateQualification = (value: string): boolean => {
@@ -105,7 +105,7 @@ export function GradeExamModal({ open, onClose, enrollmentId, studentName, onGra
   };
 
   const handleGrade = async () => {
-    if (!validateQualification(qualification)) return;
+    if (!validateQualification(qualification)) { return; }
 
     const token = localStorage.getItem('token') || '';
     const targetId = enrollmentId || selectedEnrollment?.id;
@@ -172,16 +172,15 @@ export function GradeExamModal({ open, onClose, enrollmentId, studentName, onGra
         {!enrollmentId && !fetching && (
           <Autocomplete
             options={enrollments}
-            getOptionLabel={(opt) =>
-              `${opt.student_name} — ${opt.course_name || opt.track_name} (${opt.exam_date})`
-            }
+            getOptionLabel={opt =>
+              `${opt.student_name} — ${opt.course_name || opt.track_name} (${opt.exam_date})`}
             value={selectedEnrollment}
             onChange={(_, newValue) => {
               setSelectedEnrollment(newValue);
               setError(null);
             }}
             isOptionEqualToValue={(option, value) => option.id === value.id}
-            renderInput={(params) => (
+            renderInput={params => (
               <TextField
                 {...params}
                 label={t('grade_exam.select_enrollment')}
@@ -205,10 +204,10 @@ export function GradeExamModal({ open, onClose, enrollmentId, studentName, onGra
             setQualificationError(null);
           }}
           onBlur={() => {
-            if (qualification) validateQualification(qualification);
+            if (qualification) { validateQualification(qualification); }
           }}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') void handleGrade();
+            if (e.key === 'Enter') { void handleGrade(); }
           }}
           error={!!qualificationError}
           helperText={qualificationError || t('grade_exam.enter_integer')}
@@ -224,7 +223,7 @@ export function GradeExamModal({ open, onClose, enrollmentId, studentName, onGra
           rows={2}
           margin="normal"
           value={observations}
-          onChange={(e) => setObservations(e.target.value)}
+          onChange={e => setObservations(e.target.value)}
           disabled={loading || success}
         />
       </DialogContent>

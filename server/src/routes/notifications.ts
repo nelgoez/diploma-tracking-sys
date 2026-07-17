@@ -4,6 +4,7 @@ import { authenticate } from '../middleware/auth';
 import {
   getNotifications,
   getUnreadCount,
+  markAllAsRead,
   markAsRead,
 } from '../services/notification.service';
 
@@ -36,6 +37,14 @@ notifications.get('/unread-count', async (c) => {
   const count = await getUnreadCount(studentId);
 
   return c.json({ count });
+});
+
+notifications.put('/read-all', async (c) => {
+  const auth = c.get('auth');
+  const studentId = c.req.query('student_id') || auth.userId;
+
+  const count = await markAllAsRead(studentId);
+  return c.json({ success: true, count });
 });
 
 notifications.put('/:id/read', async (c) => {

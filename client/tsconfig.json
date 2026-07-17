@@ -7,11 +7,11 @@
     "useDefineForClassFields": true,
     "baseUrl": ".",
     "module": "ESNext",
-    "types": ["vite/client"],
     "moduleResolution": "bundler",
     "paths": {
       "@/*": ["src/*"]
     },
+    "types": ["vite/client"],
     "allowImportingTsExtensions": true,
     "strict": true,
     "noFallthroughCasesInSwitch": true,

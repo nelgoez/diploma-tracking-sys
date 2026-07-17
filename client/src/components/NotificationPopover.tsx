@@ -7,6 +7,7 @@ import {
 import {
   Badge,
   Box,
+  Button,
   Chip,
   Divider,
   Drawer,
@@ -14,6 +15,7 @@ import {
   List,
   ListItemButton,
   ListItemText,
+  Snackbar,
   Tooltip,
   Typography,
 } from '@mui/material';
@@ -55,6 +57,7 @@ export function NotificationPopover() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
 
   const token = localStorage.getItem('token') || '';
 
@@ -97,6 +100,18 @@ export function NotificationPopover() {
   const handleOpen = () => {
     setOpen(true);
     void fetchNotifications();
+  };
+
+  const handleMarkAllRead = async () => {
+    try {
+      const data = await api.put<{ success: boolean, count: number }>('/notifications/read-all', {}, token);
+      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+      setUnreadCount(0);
+      setToast(`Se marcaron ${data.count} como leídas`);
+    }
+    catch {
+      // silent
+    }
   };
 
   const handleMarkRead = async (id: string) => {
@@ -147,9 +162,16 @@ export function NotificationPopover() {
       >
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 2 }}>
           <Typography variant="h6">Notificaciones</Typography>
-          <IconButton onClick={() => setOpen(false)} size="small">
-            <CloseIcon />
-          </IconButton>
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            {unreadCount > 0 && (
+              <Button size="small" startIcon={<MarkReadIcon />} onClick={() => { void handleMarkAllRead(); }}>
+                Todas leídas
+              </Button>
+            )}
+            <IconButton onClick={() => setOpen(false)} size="small">
+              <CloseIcon />
+            </IconButton>
+          </Box>
         </Box>
         <Divider />
         {loading
@@ -231,6 +253,14 @@ export function NotificationPopover() {
                 </List>
               )}
       </Drawer>
+
+      <Snackbar
+        open={!!toast}
+        autoHideDuration={3000}
+        onClose={() => setToast(null)}
+        message={toast}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      />
     </>
   );
 }

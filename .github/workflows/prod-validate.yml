@@ -17,7 +17,7 @@ jobs:
     timeout-minutes: 8
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -29,7 +29,7 @@ jobs:
         run: bun install
 
       - name: Cache Playwright browsers
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('client/bun.lock') }}
@@ -44,10 +44,10 @@ jobs:
           CI: 'true'
           ALLURE_DIR: allure-results-prod
           PROD_BASE_URL: 'https://diplomatrackingsystem.qzz.io'
-          PROD_ADMIN_EMAIL: 'admin@dts.unc.edu.ar'
-          PROD_ADMIN_PASSWORD: 'Admin123456!'
-          PROD_STUDENT_EMAIL: 'nahuelgomez.cti@gmail.com'
-          PROD_STUDENT_PASSWORD: 'Test123456!'
+          PROD_ADMIN_EMAIL: ${{ secrets.PROD_ADMIN_EMAIL }}
+          PROD_ADMIN_PASSWORD: ${{ secrets.PROD_ADMIN_PASSWORD }}
+          PROD_STUDENT_EMAIL: ${{ secrets.PROD_STUDENT_EMAIL }}
+          PROD_STUDENT_PASSWORD: ${{ secrets.PROD_STUDENT_PASSWORD }}
         run: bun validate:prod
 
       - name: Upload Allure Results (raw)
@@ -60,7 +60,7 @@ jobs:
 
       - name: Upload test report on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: prod-validate-report
           path: |
