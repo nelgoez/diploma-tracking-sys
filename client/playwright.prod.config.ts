@@ -12,8 +12,8 @@ export default defineConfig({
   retries: IS_CI ? 1 : 0,
   use: {
     baseURL:
-      process.env.PROD_BASE_URL ||
-      'https://nelgoez-diploma-tracking-sys.vercel.app',
+      process.env.PROD_BASE_URL
+      || 'https://nelgoez-diploma-tracking-sys.vercel.app',
     viewport: { width: 1280, height: 720 },
     actionTimeout: 15000,
     ignoreHTTPSErrors: true,
