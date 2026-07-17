@@ -25,9 +25,17 @@ import { systemRoutes } from './routes/system';
 import { tracksRoutes } from './routes/tracks';
 import { guaraniService } from './services/guarani.service';
 import { moodleService } from './services/moodle.service';
+import { MoodleAcademicProvider } from './providers/moodle-academic-provider';
 
 providerRegistry.registerCertificateProvider('moodle', moodleService);
 providerRegistry.registerAcademicProvider('guarani', guaraniService);
+
+// Fall back to Moodle-backed academic provider when Guaraní is not configured
+if (!process.env.GUARANI_TOKEN) {
+  const moodleAcademic = new MoodleAcademicProvider();
+  providerRegistry.registerAcademicProvider('moodle-academic', moodleAcademic);
+  providerRegistry.setActiveAcademicProvider('moodle-academic');
+}
 
 const app = new Hono();
 
