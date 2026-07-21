@@ -7,9 +7,11 @@ import { prettyJSON } from 'hono/pretty-json';
 
 import apiSpecYaml from './api-spec-content';
 import { errorHandler, notFoundHandler } from './middleware/error';
+import { rateLimitAdmin, rateLimitGeneral, rateLimitLogin, rateLimitVerify } from './middleware/rate-limit';
 import { providerRegistry } from './providers';
 import { MoodleAcademicProvider } from './providers/moodle-academic-provider';
 import { adminRoutes } from './routes/admin';
+import { analyticsRoutes } from './routes/analytics';
 import { authRoutes } from './routes/auth';
 import { certificatesRoutes } from './routes/certificates';
 import { coordinatorRoutes } from './routes/coordinator';
@@ -122,6 +124,11 @@ app.get('/api-spec', (_c) => {
   });
 });
 
+app.use('/api/v1/auth/*', rateLimitLogin);
+app.use('/api/v1/verify/*', rateLimitVerify);
+app.use('/api/v1/admin/*', rateLimitAdmin);
+app.use('/api/v1/*', rateLimitGeneral);
+
 app.route('/api/v1/auth', authRoutes);
 app.route('/api/v1/students', studentsRoutes);
 app.route('/api/v1/tracks', tracksRoutes);
@@ -137,6 +144,7 @@ app.route('/api/v1/diplomas', diplomasRoutes);
 app.route('/api/v1/cron', cronRoutes);
 app.route('/api/v1/verify', verificationRoutes);
 app.route('/api/v1/admin', adminRoutes);
+app.route('/api/v1/admin/analytics', analyticsRoutes);
 app.route('/api/v1/system', systemRoutes);
 
 app.onError(errorHandler);

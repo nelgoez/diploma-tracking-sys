@@ -2,10 +2,16 @@ import { test as base } from '@playwright/test';
 import { DashboardPage } from './pages/DashboardPage';
 import { LoginPage } from './pages/LoginPage';
 
-const ADMIN_EMAIL = process.env.TEST_ADMIN_EMAIL || 'admin@dts.unc.edu.ar';
-const ADMIN_PASSWORD = process.env.TEST_ADMIN_PASSWORD || 'Admin123456!';
-const STUDENT_EMAIL = process.env.TEST_STUDENT_EMAIL || 'estudiante@dts.unc.edu.ar';
-const STUDENT_PASSWORD = process.env.TEST_STUDENT_PASSWORD || 'Demo2024!';
+function requireEnv(name: string): string {
+  const val = process.env[name];
+  if (!val) { throw new Error(`Missing required env var: ${name}`); }
+  return val;
+}
+
+const ADMIN_EMAIL = requireEnv('TEST_ADMIN_EMAIL');
+const ADMIN_PASSWORD = requireEnv('TEST_ADMIN_PASSWORD');
+const STUDENT_EMAIL = requireEnv('TEST_STUDENT_EMAIL');
+const STUDENT_PASSWORD = requireEnv('TEST_STUDENT_PASSWORD');
 
 export const test = base.extend<{
   loginPage: LoginPage

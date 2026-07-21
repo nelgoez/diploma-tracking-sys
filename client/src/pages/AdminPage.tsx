@@ -33,9 +33,11 @@ import {
   Typography,
 } from '@mui/material';
 import { useEffect, useRef, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { AdminStatsGrid } from '../components/AdminStatsGrid';
+import { AnalyticsTab } from '../components/AnalyticsTab';
 import { CourseManagement } from '../components/CourseManagement';
+import { EmptyState, NoSearchResults, SystemReady } from '../components/illustrations';
+import { PageHeader } from '../components/PageHeader';
 import { api } from '../lib/api';
 
 interface DashboardStats {
@@ -68,8 +70,7 @@ interface StudentsResponse {
 }
 
 export function AdminPage() {
-  const { t } = useTranslation();
-  const [tab, setTab] = useState<'dashboard' | 'students' | 'courses'>('dashboard');
+  const [tab, setTab] = useState<'dashboard' | 'students' | 'courses' | 'analytics'>('dashboard');
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -158,13 +159,15 @@ export function AdminPage() {
     { key: 'dashboard' as const, label: 'Dashboard' },
     { key: 'students' as const, label: 'Students' },
     { key: 'courses' as const, label: 'Courses' },
+    { key: 'analytics' as const, label: 'Analytics' },
   ];
 
   return (
     <Box>
-      <Typography variant="h4" gutterBottom>
-        {t('nav.admin')}
-      </Typography>
+      <PageHeader
+        title="Administración"
+        description="Gestión de estudiantes, cursos, tracks y dashboard del sistema"
+      />
 
       <Box sx={{ display: 'flex', gap: 1, mb: 3 }}>
         {tabs.map(tabItem => (
@@ -186,21 +189,31 @@ export function AdminPage() {
                 <CircularProgress />
               </Box>
             )
-          : (
-              <>
-                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-                  <Button
-                    variant="contained"
-                    size="small"
-                    startIcon={<PersonAddIcon />}
-                    onClick={() => setUserDialog(true)}
-                  >
-                    Create User
-                  </Button>
-                </Box>
-                <AdminStatsGrid stats={stats} />
-              </>
-            )
+          : stats
+            ? (
+                <>
+                  <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+                    <Button
+                      variant="contained"
+                      size="small"
+                      startIcon={<PersonAddIcon />}
+                      onClick={() => setUserDialog(true)}
+                    >
+                      Create User
+                    </Button>
+                  </Box>
+                  <AdminStatsGrid stats={stats} />
+                </>
+              )
+            : (
+                <Card>
+                  <EmptyState
+                    illustration={<SystemReady />}
+                    title="El sistema está listo"
+                    description="Los datos y estadísticas aparecerán aquí cuando haya actividad en el sistema."
+                  />
+                </Card>
+              )
       )}
 
       <Dialog open={userDialog} onClose={() => setUserDialog(false)} maxWidth="xs" fullWidth>
@@ -247,7 +260,7 @@ export function AdminPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setUserDialog(false)}>Cancel</Button>
-          <Button variant="contained" onClick={handleCreateUser}>Create</Button>
+          <Button variant="contained" onClick={() => void handleCreateUser()}>Create</Button>
         </DialogActions>
       </Dialog>
 
@@ -300,10 +313,12 @@ export function AdminPage() {
                         <TableBody>
                           {students.length === 0 && (
                             <TableRow>
-                              <TableCell colSpan={8} align="center">
-                                <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
-                                  {debouncedSearch ? 'No students match your search' : 'No students found'}
-                                </Typography>
+                              <TableCell colSpan={8} sx={{ border: 'none', p: 0 }}>
+                                <EmptyState
+                                  illustration={<NoSearchResults />}
+                                  title={debouncedSearch ? 'No encontramos estudiantes' : 'No hay estudiantes registrados'}
+                                  description={debouncedSearch ? 'Probá con otro término de búsqueda.' : 'Los estudiantes aparecerán cuando se registren en el sistema.'}
+                                />
                               </TableCell>
                             </TableRow>
                           )}
@@ -379,6 +394,8 @@ export function AdminPage() {
       )}
 
       {tab === 'courses' && <CourseManagement />}
+
+      {tab === 'analytics' && <AnalyticsTab />}
     </Box>
   );
 }

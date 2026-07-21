@@ -1,6 +1,5 @@
 import { beforeAll, describe, expect, it } from 'bun:test';
-
-const BASE = 'http://localhost:3000/api/v1';
+import { BASE, TEST_ADMIN_EMAIL, TEST_ADMIN_PASSWORD, TEST_STUDENT_EMAIL, TEST_STUDENT_PASSWORD } from './test-config';
 
 interface AuthResult {
   access_token: string
@@ -27,12 +26,12 @@ describe('Integration Tests — Full DTS Flow', () => {
   let courseIds: string[] = [];
 
   beforeAll(async () => {
-    const auth = await login('nahuelgomez.cti@gmail.com', 'Test123456!');
+    const auth = await login(TEST_STUDENT_EMAIL, TEST_STUDENT_PASSWORD);
     studentToken = auth.access_token;
     studentEmail = auth.user.email;
 
     try {
-      const adminAuth = await login('admin@dts.unc.edu.ar', 'Admin123456!');
+      const adminAuth = await login(TEST_ADMIN_EMAIL, TEST_ADMIN_PASSWORD);
       adminToken = adminAuth.access_token;
     }
     catch {

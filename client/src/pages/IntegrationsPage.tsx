@@ -17,6 +17,7 @@ import {
 } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { PageHeader } from '../components/PageHeader';
 import { api } from '../lib/api';
 
 interface ProviderHealth {
@@ -139,7 +140,10 @@ export function IntegrationsPage() {
   if (!canView) {
     return (
       <Box>
-        <Typography variant="h4" gutterBottom>{t('nav.integrations')}</Typography>
+        <PageHeader
+          title="Integraciones"
+          description="Sincronización con Moodle y otros servicios externos"
+        />
         <Alert severity="info">
           La sección de integraciones está disponible solo para coordinadores y administradores.
         </Alert>
@@ -149,9 +153,15 @@ export function IntegrationsPage() {
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', p: 3, gap: 2 }}>
-        <CircularProgress />
-        <Typography variant="body2" color="text.secondary">Consultando servicios externos...</Typography>
+      <Box>
+        <PageHeader
+          title="Integraciones"
+          description="Sincronización con Moodle y otros servicios externos"
+        />
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', p: 3, gap: 2 }}>
+          <CircularProgress />
+          <Typography variant="body2" color="text.secondary">Consultando servicios externos...</Typography>
+        </Box>
       </Box>
     );
   }
@@ -159,7 +169,10 @@ export function IntegrationsPage() {
   if (loadError && !status) {
     return (
       <Box>
-        <Typography variant="h4" gutterBottom>{t('nav.integrations')}</Typography>
+        <PageHeader
+          title="Integraciones"
+          description="Sincronización con Moodle y otros servicios externos"
+        />
         <Alert severity={loadError.includes('permisos') ? 'info' : 'warning'} action={<Button size="small" onClick={() => { setLoading(true); void fetchStatus(); }}>Reintentar</Button>}>
           {loadError}
         </Alert>
@@ -169,9 +182,10 @@ export function IntegrationsPage() {
 
   return (
     <Box>
-      <Typography variant="h4" gutterBottom>
-        {t('nav.integrations')}
-      </Typography>
+      <PageHeader
+        title="Integraciones"
+        description="Sincronización con Moodle y otros servicios externos"
+      />
 
       {loadError && (
         <Alert severity="warning" sx={{ mb: 2 }} onClose={() => setLoadError(null)}>{loadError}</Alert>

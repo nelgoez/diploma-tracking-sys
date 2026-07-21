@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, it } from 'bun:test';
+import { BASE, TEST_STUDENT_EMAIL, TEST_STUDENT_PASSWORD } from './test-config';
 
-const BASE = 'http://localhost:3000/api/v1';
+const INVALID_PASSWORD = 'THIS_IS_A_TEST_INVALID_PASSWORD_DO_NOT_USE';
 
 interface AuthResult {
   access_token: string
@@ -37,7 +38,7 @@ describe('Smoke Tests — DTS System Health', () => {
       const res = await fetch(`${BASE}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: 'x@x.com', password: '12345678' }),
+        body: JSON.stringify({ email: 'x@x.com', password: INVALID_PASSWORD }),
       });
       expect(res.status).toBe(401);
     });
@@ -48,9 +49,9 @@ describe('Smoke Tests — DTS System Health', () => {
     let refreshToken: string;
 
     it('login returns tokens + user for valid credentials', async () => {
-      const body = await login('nahuelgomez.cti@gmail.com', 'Test123456!');
+      const body = await login(TEST_STUDENT_EMAIL, TEST_STUDENT_PASSWORD);
       expect(body.access_token).toBeTruthy();
-      expect(body.user.email).toBe('nahuelgomez.cti@gmail.com');
+      expect(body.user.email).toBe(TEST_STUDENT_EMAIL);
       expect(body.user.role).toBe('estudiante');
       accessToken = body.access_token;
       refreshToken = body.refresh_token;
@@ -62,7 +63,7 @@ describe('Smoke Tests — DTS System Health', () => {
       });
       expect(res.status).toBe(200);
       const body = await res.json() as { email: string };
-      expect(body.email).toBe('nahuelgomez.cti@gmail.com');
+      expect(body.email).toBe(TEST_STUDENT_EMAIL);
     });
 
     it('refresh returns new token pair', async () => {
@@ -78,7 +79,7 @@ describe('Smoke Tests — DTS System Health', () => {
   describe('RBAC enforcement', () => {
     let studentToken = '';
     beforeAll(async () => {
-      const auth = await login('nahuelgomez.cti@gmail.com', 'Test123456!');
+      const auth = await login(TEST_STUDENT_EMAIL, TEST_STUDENT_PASSWORD);
       studentToken = auth.access_token;
     });
 
@@ -106,7 +107,7 @@ describe('Smoke Tests — DTS System Health', () => {
 
   describe('Database connectivity', () => {
     it('tracks list returns paginated data', async () => {
-      const auth = await login('nahuelgomez.cti@gmail.com', 'Test123456!');
+      const auth = await login(TEST_STUDENT_EMAIL, TEST_STUDENT_PASSWORD);
       const res = await fetch(`${BASE}/tracks`, {
         headers: { Authorization: `Bearer ${auth.access_token}` },
       });
@@ -117,7 +118,7 @@ describe('Smoke Tests — DTS System Health', () => {
     });
 
     it('courses list returns data', async () => {
-      const auth = await login('nahuelgomez.cti@gmail.com', 'Test123456!');
+      const auth = await login(TEST_STUDENT_EMAIL, TEST_STUDENT_PASSWORD);
       const res = await fetch(`${BASE}/courses`, {
         headers: { Authorization: `Bearer ${auth.access_token}` },
       });

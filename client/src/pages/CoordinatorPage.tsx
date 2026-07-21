@@ -30,6 +30,8 @@ import {
 } from '@mui/material';
 import { useCallback, useEffect, useState } from 'react';
 import { GradeExamModal } from '../components/GradeExamModal';
+import { EmptyState, NoEnrollments } from '../components/illustrations';
+import { PageHeader } from '../components/PageHeader';
 import { api } from '../lib/api';
 
 interface TrackSummary {
@@ -43,13 +45,14 @@ interface TrackSummary {
 }
 
 interface StudentRow {
+  enrollment_id: string
   student_id: string
   name: string
   email: string
   dni: string
   exam_status: string | null
   exam_date: string | null
-  exam_grade: number | null
+  qualification: number | null
   eligible: boolean | null
 }
 
@@ -153,10 +156,12 @@ export function CoordinatorPage() {
   };
 
   const handleBulkGrade = async () => {
-    const gradeEntries = Object.entries(grades).map(([enrollmentId, grade]) => ({
-      enrollment_id: enrollmentId,
-      grade,
-    }));
+    const gradeEntries = students
+      .filter(s => selectedIds.has(s.student_id))
+      .map(s => ({
+        enrollment_id: s.enrollment_id,
+        grade: grades[s.student_id] ?? 7,
+      }));
 
     try {
       const result = await api.post<{ summary: { succeeded: number, failed: number }, results: Array<{ enrollment_id: string, success: boolean, error?: string }> }>(
@@ -186,9 +191,10 @@ export function CoordinatorPage() {
 
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h4" gutterBottom>
-        Panel de Coordinación
-      </Typography>
+      <PageHeader
+        title="Coordinación"
+        description="Gestión de tracks, estudiantes, exámenes y calificaciones"
+      />
 
       {!selectedTrack && (
         <Grid container spacing={3}>
@@ -268,10 +274,24 @@ export function CoordinatorPage() {
                 <MenuItem value="desaprobado">Desaprobado</MenuItem>
               </Select>
             </FormControl>
-            <TextField size="small" type="date" label="Desde" value={fromDate}
-              onChange={e => setFromDate(e.target.value)} InputLabelProps={{ shrink: true }} sx={{ minWidth: 140 }} />
-            <TextField size="small" type="date" label="Hasta" value={toDate}
-              onChange={e => setToDate(e.target.value)} InputLabelProps={{ shrink: true }} sx={{ minWidth: 140 }} />
+            <TextField
+              size="small"
+              type="date"
+              label="Desde"
+              value={fromDate}
+              onChange={e => setFromDate(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+              sx={{ minWidth: 140 }}
+            />
+            <TextField
+              size="small"
+              type="date"
+              label="Hasta"
+              value={toDate}
+              onChange={e => setToDate(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+              sx={{ minWidth: 140 }}
+            />
             {inscriptoCount > 0 && (
               <Button
                 variant="contained"
@@ -320,7 +340,7 @@ export function CoordinatorPage() {
                     <TableCell>{s.email}</TableCell>
                     <TableCell>{s.dni}</TableCell>
                     <TableCell>{s.exam_status || '-'}</TableCell>
-                    <TableCell>{s.exam_grade ?? '-'}</TableCell>
+                    <TableCell>{s.qualification ?? '-'}</TableCell>
                     <TableCell>
                       <Chip
                         label={s.eligible ? 'Sí' : 'No'}
@@ -333,7 +353,7 @@ export function CoordinatorPage() {
                         <Button
                           size="small"
                           variant="outlined"
-                          onClick={() => setIndividualGrade({ open: true, enrollmentId: s.student_id, studentName: s.name })}
+                          onClick={() => setIndividualGrade({ open: true, enrollmentId: s.enrollment_id, studentName: s.name })}
                         >
                           Calificar
                         </Button>
@@ -343,8 +363,12 @@ export function CoordinatorPage() {
                 ))}
                 {students.length === 0 && !loading && (
                   <TableRow>
-                    <TableCell colSpan={7} align="center">
-                      <Typography color="text.secondary" sx={{ py: 2 }}>No students found.</Typography>
+                    <TableCell colSpan={8} sx={{ border: 'none', p: 0 }}>
+                      <EmptyState
+                        illustration={<NoEnrollments />}
+                        title="No estás inscripto"
+                        description="No hay estudiantes inscriptos en esta track."
+                      />
                     </TableCell>
                   </TableRow>
                 )}

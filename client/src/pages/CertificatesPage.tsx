@@ -16,6 +16,8 @@ import {
 } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { EmptyState, NoCertificates } from '../components/illustrations';
+import { PageHeader } from '../components/PageHeader';
 import { api } from '../lib/api';
 
 interface CertificateResponse {
@@ -126,11 +128,14 @@ export function CertificatesPage() {
     }
   };
 
+  const pageTitle = isStaff ? t('nav.certificates') : 'Mis Certificados';
+
   return (
     <Box>
-      <Typography variant="h4" gutterBottom>
-        {t('nav.certificates')}
-      </Typography>
+      <PageHeader
+        title={pageTitle}
+        description={isStaff ? 'Todos los certificados emitidos a estudiantes' : 'Tus certificados de cursos aprobados'}
+      />
 
       <Card>
         <CardContent>
@@ -142,9 +147,11 @@ export function CertificatesPage() {
               )
             : certificates.length === 0
               ? (
-                  <Typography color="text.secondary" textAlign="center" p={3}>
-                    {t('no_results')}
-                  </Typography>
+                  <EmptyState
+                    illustration={<NoCertificates />}
+                    title="Todavía no tenés certificados"
+                    description="Los certificados aparecerán aquí cuando completes cursos."
+                  />
                 )
               : (
                   <TableContainer>
@@ -190,7 +197,7 @@ export function CertificatesPage() {
                                   size="small"
                                   variant="outlined"
                                   startIcon={<DownloadIcon fontSize="small" />}
-                                  onClick={() => handleDownloadDiploma(cert.enrollmentId!)}
+                                  onClick={() => void handleDownloadDiploma(cert.enrollmentId!)}
                                 >
                                   Diploma
                                 </Button>

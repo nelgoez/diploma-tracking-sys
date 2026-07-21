@@ -1,3 +1,9 @@
+function requireEnv(name: string): string {
+  const val = process.env[name];
+  if (!val) { throw new Error(`Missing required env var: ${name}`); }
+  return val;
+}
+
 export const config = {
   get apiUrl(): string {
     return process.env.TEST_API_URL || 'http://localhost:3000/api/v1';
@@ -16,12 +22,12 @@ export const config = {
   },
   credentials: {
     admin: {
-      email: process.env.TEST_ADMIN_EMAIL || 'admin@dts.unc.edu.ar',
-      password: process.env.TEST_ADMIN_PASSWORD || 'Admin123456!',
+      email: requireEnv('TEST_ADMIN_EMAIL'),
+      password: requireEnv('TEST_ADMIN_PASSWORD'),
     },
     student: {
-      email: process.env.TEST_STUDENT_EMAIL || 'nahuelgomez.cti@gmail.com',
-      password: process.env.TEST_STUDENT_PASSWORD || 'Test123456!',
+      email: requireEnv('TEST_STUDENT_EMAIL'),
+      password: requireEnv('TEST_STUDENT_PASSWORD'),
     },
   },
 };

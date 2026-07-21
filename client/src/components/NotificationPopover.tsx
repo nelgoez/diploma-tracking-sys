@@ -20,6 +20,7 @@ import {
   Typography,
 } from '@mui/material';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { NoNotifications } from '../components/illustrations';
 import { api } from '../lib/api';
 
 interface NotificationItem {
@@ -189,9 +190,12 @@ export function NotificationPopover() {
             )
           : notifications.length === 0
             ? (
-                <Typography variant="body2" color="text.secondary" sx={{ p: 3, textAlign: 'center' }}>
-                  No hay notificaciones
-                </Typography>
+                <Box sx={{ p: 2 }}>
+                  <NoNotifications />
+                  <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', mt: -1 }}>
+                    No tenés notificaciones
+                  </Typography>
+                </Box>
               )
             : (
                 <List sx={{ overflow: 'auto', flex: 1 }}>

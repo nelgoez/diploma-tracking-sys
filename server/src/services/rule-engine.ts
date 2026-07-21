@@ -35,7 +35,7 @@ export interface EligibilityResult {
   missingPrerequisites: string[]
 }
 
-function buildRuleTree(
+export function buildRuleTree(
   rules: RuleRow[],
   sources: SourceRow[],
   parentId: string | null = null,
@@ -118,6 +118,68 @@ function collectMissingCourses(node: RuleEvalResult): string[] {
   }
 
   return missing;
+}
+
+export function evaluateNodeWithData(
+  node: RuleNode,
+  passedCourseIds: Set<string>,
+  overrides: OverrideRow[],
+): RuleEvalResult {
+  return evaluateNode(node, passedCourseIds, overrides);
+}
+
+export function collectMissingCoursesFromResult(node: RuleEvalResult): string[] {
+  return collectMissingCourses(node);
+}
+
+export function evaluateEligibilityFromData(
+  params: {
+    studentId: string
+    trackId: string
+    rules: RuleRow[]
+    sources: SourceRow[]
+    passedCourseIds: string[]
+    overrides: OverrideRow[]
+  },
+): EligibilityResult {
+  const { studentId, trackId, rules, sources, passedCourseIds, overrides } = params;
+
+  if (!rules || rules.length === 0) {
+    return {
+      studentId,
+      trackId,
+      eligible: true,
+      evaluatedAt: new Date().toISOString(),
+      rules: [],
+      missingPrerequisites: [],
+    };
+  }
+
+  const passedSet = new Set(passedCourseIds);
+  const tree = buildRuleTree(rules, sources, null);
+
+  const ruleResults = tree.map(node => evaluateNode(node, passedSet, overrides));
+
+  const eligible = ruleResults.every(r => r.fulfilled);
+  const missingPrerequisites: string[] = [];
+
+  if (!eligible) {
+    const allMissing: string[] = [];
+    for (const result of ruleResults) {
+      allMissing.push(...collectMissingCourses(result));
+    }
+    const uniqueMissing = [...new Set(allMissing)];
+    missingPrerequisites.push(...uniqueMissing);
+  }
+
+  return {
+    studentId,
+    trackId,
+    eligible,
+    evaluatedAt: new Date().toISOString(),
+    rules: ruleResults,
+    missingPrerequisites,
+  };
 }
 
 function collectAllCourseIds(node: RuleNode): string[] {
