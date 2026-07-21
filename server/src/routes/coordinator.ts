@@ -112,7 +112,7 @@ coordinator.get('/students', async (c) => {
       student_id,
       exam_status,
       exam_date,
-      exam_grade,
+      qualification,
       students!inner(id, name, email, dni)
     `, { count: 'exact' })
     .eq('track_id', trackId)
@@ -177,7 +177,7 @@ coordinator.get('/students', async (c) => {
       dni: studentData.dni,
       exam_status: row.exam_status,
       exam_date: row.exam_date,
-      exam_grade: row.exam_grade,
+      qualification: row.qualification,
       eligible: isEligible,
     });
   }
@@ -233,7 +233,7 @@ coordinator.post('/bulk-grade', zValidator('json', bulkGradeSchema), async (c) =
       const { error: updateErr } = await supabase
         .from('enrollments')
         .update({
-          exam_grade: entry.grade,
+          qualification: entry.grade,
           exam_status: newStatus,
           updated_at: now,
         } as unknown as Record<string, unknown> as never)

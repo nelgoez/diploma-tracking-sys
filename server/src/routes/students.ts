@@ -179,10 +179,13 @@ students.get('/:id/certificates', async (c) => {
       .select('id')
       .eq('email', auth.email)
       .single();
-    if (!ownStudent) {
-      return c.json({ error: 'Student not found' }, 404);
+    if (!ownStudent || ownStudent.id !== id) {
+      return c.json({ error: 'Forbidden' }, 403);
     }
     id = ownStudent.id;
+  }
+  else if (!['admin', 'sysadmin', 'coordinador'].includes(auth.role)) {
+    return c.json({ error: 'Forbidden' }, 403);
   }
 
   const { data, error } = await supabaseAdmin

@@ -162,4 +162,67 @@ describe('Exploratory Tests — Edges & Boundaries', () => {
       expect(Date.now() - start).toBeLessThan(500);
     });
   });
+
+  describe('Grade endpoint edge cases', () => {
+    let adminToken: string;
+
+    beforeAll(async () => {
+      try {
+        adminToken = await login('admin@dts.unc.edu.ar', 'Admin123456!');
+      }
+      catch {
+        adminToken = '';
+      }
+    });
+
+    it('integer boundary — grade=1 is accepted', async () => {
+      if (!adminToken) { return; }
+      const enrollRes = await fetch(`${BASE}/enrollments`, {
+        headers: { Authorization: `Bearer ${adminToken}` },
+      });
+      const enrollments = await enrollRes.json() as { data?: { id: string, exam_status: string | null }[] };
+      const inscripto = (enrollments.data || []).find(e => e.exam_status === 'inscripto');
+      if (!inscripto) { return; }
+
+      const res = await fetch(`${BASE}/enrollments/${inscripto.id}/grade`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` },
+        body: JSON.stringify({ qualification: 1 }),
+      });
+      expect(res.status).toBe(200);
+      const body = await res.json() as { exam_status: string, qualification: number };
+      expect(body.qualification).toBe(1);
+      expect(body.exam_status).toBe('desaprobado');
+    });
+
+    it('integer boundary — grade=10 is accepted', async () => {
+      if (!adminToken) { return; }
+      const enrollRes = await fetch(`${BASE}/enrollments`, {
+        headers: { Authorization: `Bearer ${adminToken}` },
+      });
+      const enrollments = await enrollRes.json() as { data?: { id: string, exam_status: string | null }[] };
+      const inscripto = (enrollments.data || []).find(e => e.exam_status === 'inscripto');
+      if (!inscripto) { return; }
+
+      const res = await fetch(`${BASE}/enrollments/${inscripto.id}/grade`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` },
+        body: JSON.stringify({ qualification: 10 }),
+      });
+      expect(res.status).toBe(200);
+      const body = await res.json() as { exam_status: string, qualification: number };
+      expect(body.qualification).toBe(10);
+      expect(body.exam_status).toBe('aprobado');
+    });
+
+    it('decimal grade is rejected', async () => {
+      if (!adminToken) { return; }
+      const res = await fetch(`${BASE}/enrollments/none/grade`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` },
+        body: JSON.stringify({ qualification: 7.5 }),
+      });
+      expect(res.status).toBe(400);
+    });
+  });
 });
