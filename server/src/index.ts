@@ -8,6 +8,7 @@ import { prettyJSON } from 'hono/pretty-json';
 import apiSpecYaml from './api-spec-content';
 import { errorHandler, notFoundHandler } from './middleware/error';
 import { providerRegistry } from './providers';
+import { MoodleAcademicProvider } from './providers/moodle-academic-provider';
 import { adminRoutes } from './routes/admin';
 import { authRoutes } from './routes/auth';
 import { certificatesRoutes } from './routes/certificates';
@@ -23,9 +24,9 @@ import { rulesRoutes } from './routes/rules';
 import { studentsRoutes } from './routes/students';
 import { systemRoutes } from './routes/system';
 import { tracksRoutes } from './routes/tracks';
+import { verificationRoutes } from './routes/verification';
 import { guaraniService } from './services/guarani.service';
 import { moodleService } from './services/moodle.service';
-import { MoodleAcademicProvider } from './providers/moodle-academic-provider';
 
 providerRegistry.registerCertificateProvider('moodle', moodleService);
 providerRegistry.registerAcademicProvider('guarani', guaraniService);
@@ -134,6 +135,7 @@ app.route('/api/v1/integrations', integrationsRoutes);
 app.route('/api/v1/notifications', notificationsRoutes);
 app.route('/api/v1/diplomas', diplomasRoutes);
 app.route('/api/v1/cron', cronRoutes);
+app.route('/api/v1/verify', verificationRoutes);
 app.route('/api/v1/admin', adminRoutes);
 app.route('/api/v1/system', systemRoutes);
 
