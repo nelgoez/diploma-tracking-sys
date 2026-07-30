@@ -1,7 +1,8 @@
+import type { HonoVariables } from '../types/hono';
 import { Hono } from 'hono';
 import { supabaseAdmin } from '../db/supabase';
 
-const verification = new Hono();
+const verification = new Hono<{ Variables: HonoVariables }>();
 
 const CODE_PREFIX = 'DTS';
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';

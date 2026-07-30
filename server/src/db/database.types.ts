@@ -7,11 +7,6 @@ export type Json
     | Json[];
 
 export interface Database {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: '14.5'
-  }
   public: {
     Tables: {
       audit_log: {
@@ -45,15 +40,7 @@ export interface Database {
           ip_address?: string | null
           user_id?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: 'audit_log_user_id_fkey'
-            columns: ['user_id']
-            isOneToOne: false
-            referencedRelation: 'students'
-            referencedColumns: ['id']
-          },
-        ]
+        Relationships: []
       }
       certificates: {
         Row: {
@@ -92,22 +79,7 @@ export interface Database {
           student_id?: string
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: 'certificates_course_id_fkey'
-            columns: ['course_id']
-            isOneToOne: false
-            referencedRelation: 'courses'
-            referencedColumns: ['id']
-          },
-          {
-            foreignKeyName: 'certificates_student_id_fkey'
-            columns: ['student_id']
-            isOneToOne: false
-            referencedRelation: 'students'
-            referencedColumns: ['id']
-          },
-        ]
+        Relationships: []
       }
       courses: {
         Row: {
@@ -149,15 +121,43 @@ export interface Database {
           track_id?: string
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: 'courses_track_id_fkey'
-            columns: ['track_id']
-            isOneToOne: false
-            referencedRelation: 'tracks'
-            referencedColumns: ['id']
-          },
-        ]
+        Relationships: []
+      }
+      diploma_files: {
+        Row: {
+          created_at: string | null
+          enrollment_id: string
+          error_message: string | null
+          file_path: string | null
+          generated_at: string | null
+          id: string
+          reference_code: string | null
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          enrollment_id: string
+          error_message?: string | null
+          file_path?: string | null
+          generated_at?: string | null
+          id?: string
+          reference_code?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          enrollment_id?: string
+          error_message?: string | null
+          file_path?: string | null
+          generated_at?: string | null
+          id?: string
+          reference_code?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       enrollments: {
         Row: {
@@ -192,7 +192,7 @@ export interface Database {
         }
         Update: {
           completion_date?: string | null
-          course_id?: string
+          course_id?: string | null
           created_at?: string
           enrollment_date?: string | null
           exam_date?: string | null
@@ -205,29 +205,7 @@ export interface Database {
           track_id?: string
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: 'enrollments_course_id_fkey'
-            columns: ['course_id']
-            isOneToOne: false
-            referencedRelation: 'courses'
-            referencedColumns: ['id']
-          },
-          {
-            foreignKeyName: 'enrollments_student_id_fkey'
-            columns: ['student_id']
-            isOneToOne: false
-            referencedRelation: 'students'
-            referencedColumns: ['id']
-          },
-          {
-            foreignKeyName: 'enrollments_track_id_fkey'
-            columns: ['track_id']
-            isOneToOne: false
-            referencedRelation: 'tracks'
-            referencedColumns: ['id']
-          },
-        ]
+        Relationships: []
       }
       integration_logs: {
         Row: {
@@ -296,29 +274,46 @@ export interface Database {
           student_id?: string
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: 'manual_overrides_created_by_fkey'
-            columns: ['created_by']
-            isOneToOne: false
-            referencedRelation: 'students'
-            referencedColumns: ['id']
-          },
-          {
-            foreignKeyName: 'manual_overrides_rule_id_fkey'
-            columns: ['rule_id']
-            isOneToOne: false
-            referencedRelation: 'prerequisite_rules'
-            referencedColumns: ['id']
-          },
-          {
-            foreignKeyName: 'manual_overrides_student_id_fkey'
-            columns: ['student_id']
-            isOneToOne: false
-            referencedRelation: 'students'
-            referencedColumns: ['id']
-          },
-        ]
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          body: string
+          created_at: string
+          entity_id: string | null
+          entity_type: string | null
+          expires_at: string | null
+          id: string
+          read: boolean
+          student_id: string
+          title: string
+          type: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          expires_at?: string | null
+          id?: string
+          read?: boolean
+          student_id: string
+          title: string
+          type: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          expires_at?: string | null
+          id?: string
+          read?: boolean
+          student_id?: string
+          title?: string
+          type?: string
+        }
+        Relationships: []
       }
       prerequisite_rules: {
         Row: {
@@ -354,29 +349,7 @@ export interface Database {
           target_course_id?: string
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: 'prerequisite_rules_created_by_fkey'
-            columns: ['created_by']
-            isOneToOne: false
-            referencedRelation: 'students'
-            referencedColumns: ['id']
-          },
-          {
-            foreignKeyName: 'prerequisite_rules_parent_rule_id_fkey'
-            columns: ['parent_rule_id']
-            isOneToOne: false
-            referencedRelation: 'prerequisite_rules'
-            referencedColumns: ['id']
-          },
-          {
-            foreignKeyName: 'prerequisite_rules_target_course_id_fkey'
-            columns: ['target_course_id']
-            isOneToOne: false
-            referencedRelation: 'courses'
-            referencedColumns: ['id']
-          },
-        ]
+        Relationships: []
       }
       prerequisite_sources: {
         Row: {
@@ -391,22 +364,7 @@ export interface Database {
           rule_id?: string
           source_course_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: 'prerequisite_sources_rule_id_fkey'
-            columns: ['rule_id']
-            isOneToOne: false
-            referencedRelation: 'prerequisite_rules'
-            referencedColumns: ['id']
-          },
-          {
-            foreignKeyName: 'prerequisite_sources_source_course_id_fkey'
-            columns: ['source_course_id']
-            isOneToOne: false
-            referencedRelation: 'courses'
-            referencedColumns: ['id']
-          },
-        ]
+        Relationships: []
       }
       students: {
         Row: {
@@ -447,6 +405,27 @@ export interface Database {
         }
         Relationships: []
       }
+      track_coordinators: {
+        Row: {
+          created_at: string | null
+          id: string
+          track_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          track_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          track_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       tracks: {
         Row: {
           code: string
@@ -480,6 +459,48 @@ export interface Database {
         }
         Relationships: []
       }
+      verification_references: {
+        Row: {
+          code_hash: string
+          created_at: string
+          enrollment_id: string
+          id: string
+          is_active: boolean
+          reference_code: string
+          revoked_at: string | null
+          revoked_by: string | null
+          updated_at: string
+          verification_url: string
+          verified_count: number
+        }
+        Insert: {
+          code_hash: string
+          created_at?: string
+          enrollment_id: string
+          id?: string
+          is_active?: boolean
+          reference_code: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+          updated_at?: string
+          verification_url: string
+          verified_count?: number
+        }
+        Update: {
+          code_hash?: string
+          created_at?: string
+          enrollment_id?: string
+          id?: string
+          is_active?: boolean
+          reference_code?: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+          updated_at?: string
+          verification_url?: string
+          verified_count?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -495,126 +516,3 @@ export interface Database {
     }
   }
 }
-
-type DatabaseWithoutInternals = Omit<Database, '__InternalSupabase'>;
-
-type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, 'public'>];
-
-export type Tables<
-  DefaultSchemaTableNameOrOptions extends
-  | keyof (DefaultSchema['Tables'] & DefaultSchema['Views'])
-  | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
-      & DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Views'])
-    : never = never,
-> = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
-    & DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Views'])[TableName] extends {
-      Row: infer R
-    }
-      ? R
-      : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema['Tables']
-    & DefaultSchema['Views'])
-    ? (DefaultSchema['Tables']
-      & DefaultSchema['Views'])[DefaultSchemaTableNameOrOptions] extends {
-        Row: infer R
-      }
-        ? R
-        : never
-    : never;
-
-export type TablesInsert<
-  DefaultSchemaTableNameOrOptions extends
-  | keyof DefaultSchema['Tables']
-  | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
-    : never = never,
-> = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'][TableName] extends {
-    Insert: infer I
-  }
-    ? I
-    : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema['Tables']
-    ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
-      Insert: infer I
-    }
-      ? I
-      : never
-    : never;
-
-export type TablesUpdate<
-  DefaultSchemaTableNameOrOptions extends
-  | keyof DefaultSchema['Tables']
-  | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables']
-    : never = never,
-> = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions['schema']]['Tables'][TableName] extends {
-    Update: infer U
-  }
-    ? U
-    : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema['Tables']
-    ? DefaultSchema['Tables'][DefaultSchemaTableNameOrOptions] extends {
-      Update: infer U
-    }
-      ? U
-      : never
-    : never;
-
-export type Enums<
-  DefaultSchemaEnumNameOrOptions extends
-  | keyof DefaultSchema['Enums']
-  | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions['schema']]['Enums']
-    : never = never,
-> = DefaultSchemaEnumNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions['schema']]['Enums'][EnumName]
-  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema['Enums']
-    ? DefaultSchema['Enums'][DefaultSchemaEnumNameOrOptions]
-    : never;
-
-export type CompositeTypes<
-  PublicCompositeTypeNameOrOptions extends
-  | keyof DefaultSchema['CompositeTypes']
-  | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions['schema']]['CompositeTypes']
-    : never = never,
-> = PublicCompositeTypeNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions['schema']]['CompositeTypes'][CompositeTypeName]
-  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema['CompositeTypes']
-    ? DefaultSchema['CompositeTypes'][PublicCompositeTypeNameOrOptions]
-    : never;
-
-export const Constants = {
-  public: {
-    Enums: {},
-  },
-} as const;
