@@ -60,7 +60,7 @@ analytics.get('/enrollments', async (c) => {
       activeCount++;
     }
 
-    const trackName = (e.tracks as { name: string }).name;
+    const trackName = (e.tracks as unknown as { name: string }).name;
     const trackEntry = byTrackMap.get(trackName) || { count: 0, eligible: 0 };
     trackEntry.count++;
     // NOTE: Simplified proxy — counts enrollment-level exam_status as eligibility.
@@ -130,7 +130,7 @@ analytics.get('/certificates', async (c) => {
   twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
 
   for (const cert of certificates) {
-    const course = cert.courses as { name: string, track_id: string, tracks: { name: string } };
+    const course = cert.courses as unknown as { name: string, track_id: string, tracks: { name: string } };
     const courseName = course.name;
     const trackName = course.tracks.name;
 
@@ -167,7 +167,7 @@ analytics.get('/certificates', async (c) => {
 
   const trackStudentCountMap = new Map<string, Set<string>>();
   for (const e of studentsByTrack || []) {
-    const trackName = (e.tracks as { name: string }).name;
+    const trackName = (e.tracks as unknown as { name: string }).name;
     if (!trackStudentCountMap.has(trackName)) {
       trackStudentCountMap.set(trackName, new Set());
     }
@@ -234,8 +234,8 @@ analytics.get('/certificates/export', async (c) => {
   ];
 
   const rows = certificates.map((cert) => {
-    const student = cert.students as { name: string, email: string, dni: string | null };
-    const course = cert.courses as { name: string, code: string, tracks: { name: string } };
+    const student = cert.students as unknown as { name: string, email: string, dni: string | null };
+    const course = cert.courses as unknown as { name: string, code: string, tracks: { name: string } };
     return [
       cert.id,
       student.name,
