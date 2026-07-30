@@ -47,7 +47,7 @@ jobs:
           bun test __tests__/ --timeout 15000 || true
 
   client:
-    name: Client — Build
+    name: Client — Build + Traceability
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -68,3 +68,30 @@ jobs:
         run: bun run build
         env:
           VITE_API_URL: ${{ secrets.VITE_API_URL }}
+
+  traceability:
+    name: Traceability Matrix
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Generate traceability matrix
+        run: bun run scripts/generate-traceability.ts
+        env:
+          JIRA_URL: ${{ secrets.JIRA_URL || 'https://diplo-track-sys.atlassian.net' }}
+
+      - name: Upload traceability matrix
+        uses: actions/upload-artifact@v4
+        with:
+          name: traceability-matrix
+          path: traceability-out/
+          retention-days: 30
