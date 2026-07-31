@@ -73,6 +73,8 @@ function createRateLimiter(config: RateLimitConfig): MiddlewareHandler<{ Variabl
   };
 }
 
+const isTestEnv = (): boolean => process.env.NODE_ENV === 'test';
+
 const isSpecificPath = (c: Parameters<MiddlewareHandler<{ Variables: HonoVariables }>>[0]): boolean => {
   const path = c.req.path;
   return path.startsWith('/api/v1/auth/')
@@ -90,6 +92,7 @@ export const rateLimitLogin = createRateLimiter({
   windowMs: 15 * 60 * 1000,
   maxRequests: 5,
   key: c => `login:${resolveClientIp(c)}`,
+  skip: () => isTestEnv(),
 });
 
 export const rateLimitVerify = createRateLimiter({
