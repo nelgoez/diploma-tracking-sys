@@ -38,6 +38,7 @@ import { AnalyticsTab } from '../components/AnalyticsTab';
 import { CourseManagement } from '../components/CourseManagement';
 import { EmptyState, NoSearchResults, SystemReady } from '../components/illustrations';
 import { PageHeader } from '../components/PageHeader';
+import { VerificationsTab } from '../components/VerificationsTab';
 import { api } from '../lib/api';
 
 interface DashboardStats {
@@ -70,7 +71,7 @@ interface StudentsResponse {
 }
 
 export function AdminPage() {
-  const [tab, setTab] = useState<'dashboard' | 'students' | 'courses' | 'analytics'>('dashboard');
+  const [tab, setTab] = useState<'dashboard' | 'students' | 'courses' | 'analytics' | 'verifications'>('dashboard');
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -160,6 +161,7 @@ export function AdminPage() {
     { key: 'students' as const, label: 'Students' },
     { key: 'courses' as const, label: 'Courses' },
     { key: 'analytics' as const, label: 'Analytics' },
+    { key: 'verifications' as const, label: 'Verificaciones' },
   ];
 
   return (
@@ -396,6 +398,8 @@ export function AdminPage() {
       {tab === 'courses' && <CourseManagement />}
 
       {tab === 'analytics' && <AnalyticsTab />}
+
+      {tab === 'verifications' && <VerificationsTab />}
     </Box>
   );
 }
