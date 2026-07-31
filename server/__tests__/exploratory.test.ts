@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, it } from 'bun:test';
+import { BASE, TEST_ADMIN_EMAIL, TEST_ADMIN_PASSWORD, TEST_STUDENT_EMAIL, TEST_STUDENT_PASSWORD } from './test-config';
 
-const BASE = 'http://localhost:3000/api/v1';
+const INVALID_PASSWORD = 'THIS_IS_A_TEST_INVALID_PASSWORD_DO_NOT_USE';
 
 async function login(email: string, password: string): Promise<string> {
   const res = await fetch(`${BASE}/auth/login`, {
@@ -17,7 +18,7 @@ describe('Exploratory Tests — Edges & Boundaries', () => {
   let token: string;
 
   beforeAll(async () => {
-    token = await login('nahuelgomez.cti@gmail.com', 'Test123456!');
+    token = await login(TEST_STUDENT_EMAIL, TEST_STUDENT_PASSWORD);
   });
 
   describe('Auth edge cases', () => {
@@ -25,7 +26,7 @@ describe('Exploratory Tests — Edges & Boundaries', () => {
       const res = await fetch(`${BASE}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: 'nahuelgomez.cti@gmail.com', password: 'WrongPass1!' }),
+        body: JSON.stringify({ email: TEST_STUDENT_EMAIL, password: INVALID_PASSWORD }),
       });
       expect(res.status).toBe(401);
     });
@@ -33,7 +34,7 @@ describe('Exploratory Tests — Edges & Boundaries', () => {
       const res = await fetch(`${BASE}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: 'noexiste@unc.edu.ar', password: 'Test123456!' }),
+        body: JSON.stringify({ email: 'noexiste@unc.edu.ar', password: INVALID_PASSWORD }),
       });
       expect(res.status).toBe(401);
     });
@@ -49,7 +50,7 @@ describe('Exploratory Tests — Edges & Boundaries', () => {
       const res = await fetch(`${BASE}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: 'not-email', password: 'Test123456!' }),
+        body: JSON.stringify({ email: 'not-email', password: INVALID_PASSWORD }),
       });
       expect(res.status).toBe(400);
     });
@@ -76,7 +77,7 @@ describe('Exploratory Tests — Edges & Boundaries', () => {
       const res = await fetch(`${BASE}/admin/users`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: 'x@x.com', password: 'Test123456!', role: 'estudiante' }),
+        body: JSON.stringify({ email: 'x@x.com', password: INVALID_PASSWORD, role: 'estudiante' }),
       });
       expect(res.status).toBe(403);
     });
@@ -147,7 +148,7 @@ describe('Exploratory Tests — Edges & Boundaries', () => {
         fetch(`${BASE}/auth/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: 'x@x.com', password: '12345678' }),
+          body: JSON.stringify({ email: 'x@x.com', password: INVALID_PASSWORD }),
         }),
       ));
       for (const x of r) { expect(x.status).toBe(401); }
@@ -160,6 +161,69 @@ describe('Exploratory Tests — Edges & Boundaries', () => {
         body: JSON.stringify({ studentId: 'x', trackId: 'x' }),
       });
       expect(Date.now() - start).toBeLessThan(500);
+    });
+  });
+
+  describe('Grade endpoint edge cases', () => {
+    let adminToken: string;
+
+    beforeAll(async () => {
+      try {
+        adminToken = await login(TEST_ADMIN_EMAIL, TEST_ADMIN_PASSWORD);
+      }
+      catch {
+        adminToken = '';
+      }
+    });
+
+    it('integer boundary — grade=1 is accepted', async () => {
+      if (!adminToken) { return; }
+      const enrollRes = await fetch(`${BASE}/enrollments`, {
+        headers: { Authorization: `Bearer ${adminToken}` },
+      });
+      const enrollments = await enrollRes.json() as { data?: { id: string, exam_status: string | null }[] };
+      const inscripto = (enrollments.data || []).find(e => e.exam_status === 'inscripto');
+      if (!inscripto) { return; }
+
+      const res = await fetch(`${BASE}/enrollments/${inscripto.id}/grade`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` },
+        body: JSON.stringify({ qualification: 1 }),
+      });
+      expect(res.status).toBe(200);
+      const body = await res.json() as { exam_status: string, qualification: number };
+      expect(body.qualification).toBe(1);
+      expect(body.exam_status).toBe('desaprobado');
+    });
+
+    it('integer boundary — grade=10 is accepted', async () => {
+      if (!adminToken) { return; }
+      const enrollRes = await fetch(`${BASE}/enrollments`, {
+        headers: { Authorization: `Bearer ${adminToken}` },
+      });
+      const enrollments = await enrollRes.json() as { data?: { id: string, exam_status: string | null }[] };
+      const inscripto = (enrollments.data || []).find(e => e.exam_status === 'inscripto');
+      if (!inscripto) { return; }
+
+      const res = await fetch(`${BASE}/enrollments/${inscripto.id}/grade`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` },
+        body: JSON.stringify({ qualification: 10 }),
+      });
+      expect(res.status).toBe(200);
+      const body = await res.json() as { exam_status: string, qualification: number };
+      expect(body.qualification).toBe(10);
+      expect(body.exam_status).toBe('aprobado');
+    });
+
+    it('decimal grade is rejected', async () => {
+      if (!adminToken) { return; }
+      const res = await fetch(`${BASE}/enrollments/none/grade`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` },
+        body: JSON.stringify({ qualification: 7.5 }),
+      });
+      expect(res.status).toBe(400);
     });
   });
 });

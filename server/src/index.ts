@@ -7,8 +7,11 @@ import { prettyJSON } from 'hono/pretty-json';
 
 import apiSpecYaml from './api-spec-content';
 import { errorHandler, notFoundHandler } from './middleware/error';
+import { rateLimitAdmin, rateLimitGeneral, rateLimitLogin, rateLimitVerify } from './middleware/rate-limit';
 import { providerRegistry } from './providers';
+import { MoodleAcademicProvider } from './providers/moodle-academic-provider';
 import { adminRoutes } from './routes/admin';
+import { analyticsRoutes } from './routes/analytics';
 import { authRoutes } from './routes/auth';
 import { certificatesRoutes } from './routes/certificates';
 import { coordinatorRoutes } from './routes/coordinator';
@@ -23,11 +26,19 @@ import { rulesRoutes } from './routes/rules';
 import { studentsRoutes } from './routes/students';
 import { systemRoutes } from './routes/system';
 import { tracksRoutes } from './routes/tracks';
+import { verificationRoutes } from './routes/verification';
 import { guaraniService } from './services/guarani.service';
 import { moodleService } from './services/moodle.service';
 
 providerRegistry.registerCertificateProvider('moodle', moodleService);
 providerRegistry.registerAcademicProvider('guarani', guaraniService);
+
+// Fall back to Moodle-backed academic provider when Guaraní is not configured
+if (!process.env.GUARANI_TOKEN) {
+  const moodleAcademic = new MoodleAcademicProvider();
+  providerRegistry.registerAcademicProvider('moodle-academic', moodleAcademic);
+  providerRegistry.setActiveAcademicProvider('moodle-academic');
+}
 
 const app = new Hono();
 
@@ -113,6 +124,11 @@ app.get('/api-spec', (_c) => {
   });
 });
 
+app.use('/api/v1/auth/*', rateLimitLogin);
+app.use('/api/v1/verify/*', rateLimitVerify);
+app.use('/api/v1/admin/*', rateLimitAdmin);
+app.use('/api/v1/*', rateLimitGeneral);
+
 app.route('/api/v1/auth', authRoutes);
 app.route('/api/v1/students', studentsRoutes);
 app.route('/api/v1/tracks', tracksRoutes);
@@ -126,7 +142,9 @@ app.route('/api/v1/integrations', integrationsRoutes);
 app.route('/api/v1/notifications', notificationsRoutes);
 app.route('/api/v1/diplomas', diplomasRoutes);
 app.route('/api/v1/cron', cronRoutes);
+app.route('/api/v1/verify', verificationRoutes);
 app.route('/api/v1/admin', adminRoutes);
+app.route('/api/v1/admin/analytics', analyticsRoutes);
 app.route('/api/v1/system', systemRoutes);
 
 app.onError(errorHandler);

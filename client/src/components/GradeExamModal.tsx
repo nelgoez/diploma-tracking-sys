@@ -8,12 +8,14 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  Snackbar,
   TextField,
   Typography,
 } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { t } from '../i18n';
 import { api } from '../lib/api';
+import { GradeCelebration } from './GradeCelebration';
 
 interface EnrollmentOption {
   id: string
@@ -41,6 +43,8 @@ export function GradeExamModal({ open, onClose, enrollmentId, studentName, onGra
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [qualificationError, setQualificationError] = useState<string | null>(null);
+  const [celebrationGrade, setCelebrationGrade] = useState<number | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) {
@@ -127,6 +131,10 @@ export function GradeExamModal({ open, onClose, enrollmentId, studentName, onGra
 
       await api.put(`/enrollments/${targetId}/grade`, body, token);
       setSuccess(true);
+      setCelebrationGrade(Number(qualification));
+      setToast(Number(qualification) >= 4
+        ? '¡Aprobado! Diploma pendiente'
+        : 'Desaprobado. Puede reinscribirse.');
       onGraded();
     }
     catch (err) {
@@ -151,7 +159,7 @@ export function GradeExamModal({ open, onClose, enrollmentId, studentName, onGra
           ? `${t('grade_exam.dialog_title')} — ${studentName}`
           : t('grade_exam.dialog_title')}
       </DialogTitle>
-      <DialogContent>
+      <DialogContent sx={{ position: 'relative' }}>
         {fetching && (
           <Box sx={{ py: 3 }}>
             <Typography color="text.secondary">{t('grade_exam.loading')}</Typography>
@@ -162,11 +170,8 @@ export function GradeExamModal({ open, onClose, enrollmentId, studentName, onGra
           <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
         )}
 
-        {success && (
-          <Alert severity="success" sx={{ mb: 2 }}>
-            {t('grade_exam.success')}
-            {Number(qualification) >= 4 ? t('grade_exam.approved') : t('grade_exam.not_approved')}
-          </Alert>
+        {success && celebrationGrade !== null && (
+          <GradeCelebration grade={celebrationGrade} />
         )}
 
         {!enrollmentId && !fetching && (
@@ -193,6 +198,17 @@ export function GradeExamModal({ open, onClose, enrollmentId, studentName, onGra
           />
         )}
 
+        {loading && (
+          <Box
+            sx={{
+              position: 'absolute',
+              inset: 0,
+              bgcolor: 'rgba(255,255,255,0.5)',
+              zIndex: 1,
+              borderRadius: 1,
+            }}
+          />
+        )}
         <TextField
           label={t('grade_exam.qualification_label')}
           type="number"
@@ -241,6 +257,20 @@ export function GradeExamModal({ open, onClose, enrollmentId, studentName, onGra
           {success ? t('grade_exam.done') : loading ? t('grade_exam.submitting') : t('grade_exam.submit_grade')}
         </Button>
       </DialogActions>
+      <Snackbar
+        open={!!toast}
+        autoHideDuration={4000}
+        onClose={() => setToast(null)}
+        message={toast}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        ContentProps={{
+          className: toast ? 'dts-toast-in' : undefined,
+          sx: {
+            bgcolor: toast?.includes('Aprobado') ? 'success.dark' : 'error.dark',
+            fontWeight: 600,
+          },
+        }}
+      />
     </Dialog>
   );
 }

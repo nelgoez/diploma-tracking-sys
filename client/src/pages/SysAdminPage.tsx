@@ -36,6 +36,8 @@ import {
 } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { CourseManagement } from '../components/CourseManagement';
+import { EmptyState, NoOverrides } from '../components/illustrations';
+import { PageHeader } from '../components/PageHeader';
 import { api } from '../lib/api';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
@@ -523,9 +525,10 @@ export function SysAdminPage() {
 
   return (
     <Box>
-      <Typography variant="h4" gutterBottom>
-        SysAdmin Panel
-      </Typography>
+      <PageHeader
+        title="Sistema"
+        description="Gestión de cursos, tracks, reglas, overrides y diagnóstico del sistema"
+      />
 
       <Box sx={{ display: 'flex', gap: 1, mb: 3 }}>
         {tabs.map(t => (
@@ -708,48 +711,58 @@ export function SysAdminPage() {
               ))}
             </Box>
 
-            <TableContainer>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Student</TableCell>
-                    <TableCell>Rule Target</TableCell>
-                    <TableCell>Reason</TableCell>
-                    <TableCell>Expires</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell align="right">Actions</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {overrides.map(o => (
-                    <TableRow key={o.id}>
-                      <TableCell>{overrideStudentLabel(o)}</TableCell>
-                      <TableCell>{courseNameById(o.rule.target_course_id)}</TableCell>
-                      <TableCell sx={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {o.reason}
-                      </TableCell>
-                      <TableCell>
-                        {o.expires_at ? new Date(o.expires_at).toLocaleDateString() : '-'}
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          label={o.status}
-                          color={o.status === 'active' ? 'success' : o.status === 'expired' ? 'warning' : 'default'}
-                          size="small"
-                        />
-                      </TableCell>
-                      <TableCell align="right">
-                        {o.status === 'active' && (
-                          <IconButton size="small" color="warning" onClick={() => { void handleRevokeOverride(o.id); }}>
-                            <BlockIcon fontSize="small" />
-                          </IconButton>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+            {overrides.length === 0
+              ? (
+                  <EmptyState
+                    illustration={<NoOverrides />}
+                    title="No hay overrides activas"
+                    description="Las excepciones manuales aparecerán aquí cuando se creen."
+                  />
+                )
+              : (
+                  <TableContainer>
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>Student</TableCell>
+                          <TableCell>Rule Target</TableCell>
+                          <TableCell>Reason</TableCell>
+                          <TableCell>Expires</TableCell>
+                          <TableCell>Status</TableCell>
+                          <TableCell align="right">Actions</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {overrides.map(o => (
+                          <TableRow key={o.id}>
+                            <TableCell>{overrideStudentLabel(o)}</TableCell>
+                            <TableCell>{courseNameById(o.rule.target_course_id)}</TableCell>
+                            <TableCell sx={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {o.reason}
+                            </TableCell>
+                            <TableCell>
+                              {o.expires_at ? new Date(o.expires_at).toLocaleDateString() : '-'}
+                            </TableCell>
+                            <TableCell>
+                              <Chip
+                                label={o.status}
+                                color={o.status === 'active' ? 'success' : o.status === 'expired' ? 'warning' : 'default'}
+                                size="small"
+                              />
+                            </TableCell>
+                            <TableCell align="right">
+                              {o.status === 'active' && (
+                                <IconButton size="small" color="warning" onClick={() => { void handleRevokeOverride(o.id); }}>
+                                  <BlockIcon fontSize="small" />
+                                </IconButton>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                )}
           </CardContent>
         </Card>
       )}

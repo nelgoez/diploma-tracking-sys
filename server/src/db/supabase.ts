@@ -1,9 +1,15 @@
 import type { Database } from './database.types';
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.SUPABASE_URL || 'https://placeholder.supabase.co';
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || 'placeholder-anon-key';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'placeholder-service-role-key';
+function requireEnv(name: string): string {
+  const val = process.env[name];
+  if (!val) { throw new Error(`Missing required env var: ${name}. Set in .env or CI secrets.`); }
+  return val;
+}
+
+const supabaseUrl = requireEnv('SUPABASE_URL');
+const supabaseAnonKey = requireEnv('SUPABASE_ANON_KEY');
+const supabaseServiceKey = requireEnv('SUPABASE_SERVICE_ROLE_KEY');
 
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
 

@@ -78,7 +78,7 @@ courses.get('/:id/prerequisites', async (c) => {
   const rules = allRules || [];
 
   const allSourceIds = rules.flatMap(r =>
-    (r.sources as { source_course_id: string }[] || []).map(s => s.source_course_id),
+    (r.sources as unknown as { source_course_id: string }[] || []).map(s => s.source_course_id),
   );
 
   let sourceCourses: Record<string, unknown>[] = [];

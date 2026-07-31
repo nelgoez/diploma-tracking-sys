@@ -8,6 +8,7 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import { theme } from './theme';
 import './i18n/index.tsx';
+import './styles/animations.css';
 
 const queryClient = new QueryClient({
   defaultOptions: {

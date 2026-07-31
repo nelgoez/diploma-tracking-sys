@@ -19,7 +19,8 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { NoNotifications } from '../components/illustrations';
 import { api } from '../lib/api';
 
 interface NotificationItem {
@@ -58,6 +59,7 @@ export function NotificationPopover() {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const prevCountRef = useRef(0);
 
   const token = localStorage.getItem('token') || '';
 
@@ -65,7 +67,13 @@ export function NotificationPopover() {
     if (!token) { return; }
     try {
       const data = await api.get<{ count: number }>('/notifications/unread-count', token);
-      setUnreadCount(data.count);
+      const newCount = data.count;
+      if (newCount > prevCountRef.current && prevCountRef.current > 0) {
+        const diff = newCount - prevCountRef.current;
+        setToast(`${diff} nueva${diff > 1 ? 's' : ''} notificación${diff > 1 ? 'es' : ''}`);
+      }
+      prevCountRef.current = newCount;
+      setUnreadCount(newCount);
     }
     catch {
       // silent — bell just stays at last known count
@@ -182,9 +190,12 @@ export function NotificationPopover() {
             )
           : notifications.length === 0
             ? (
-                <Typography variant="body2" color="text.secondary" sx={{ p: 3, textAlign: 'center' }}>
-                  No hay notificaciones
-                </Typography>
+                <Box sx={{ p: 2 }}>
+                  <NoNotifications />
+                  <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', mt: -1 }}>
+                    No tenés notificaciones
+                  </Typography>
+                </Box>
               )
             : (
                 <List sx={{ overflow: 'auto', flex: 1 }}>

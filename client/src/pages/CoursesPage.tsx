@@ -14,6 +14,7 @@ import {
 } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { EmptyState, NoCertificates } from '../components/illustrations';
 import { api } from '../lib/api';
 
 interface ApiCourse {
@@ -96,9 +97,11 @@ export function CoursesPage() {
               )
             : courses.length === 0
               ? (
-                  <Typography color="text.secondary" textAlign="center" p={3}>
-                    {t('no_results')}
-                  </Typography>
+                  <EmptyState
+                    illustration={<NoCertificates />}
+                    title="No hay cursos disponibles"
+                    description="Los cursos aparecerán aquí cuando se configuren en el sistema."
+                  />
                 )
               : (
                   <TableContainer>

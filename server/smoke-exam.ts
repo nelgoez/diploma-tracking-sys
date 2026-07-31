@@ -4,14 +4,19 @@ import appModule from './src/index';
 
 const app = { fetch: appModule.fetch };
 const baseUrl = 'http://localhost';
-const JWT_SECRET = new TextEncoder().encode('placeholder-secret-key-minimum-32-characters');
+
+function getJwtSecret(): Uint8Array {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) { throw new Error('JWT_SECRET environment variable is required'); }
+  return new TextEncoder().encode(secret);
+}
 
 async function createToken(role: string): Promise<string> {
   return new SignJWT({ sub: 'smoke-test-id', email: `${role}@dts.com`, role, type: 'access' })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime('1h')
-    .sign(JWT_SECRET);
+    .sign(getJwtSecret());
 }
 
 function headers(token: string) {
@@ -143,7 +148,9 @@ async function run() {
   process.exit(passed === total ? 0 : 1);
 }
 
-run().catch((err) => {
-  console.error('SMOKE CRASH:', err);
-  process.exit(1);
-});
+if (import.meta.main) {
+  run().catch((err) => {
+    console.error('SMOKE CRASH:', err);
+    process.exit(1);
+  });
+}
