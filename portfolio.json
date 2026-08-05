@@ -1,0 +1,30 @@
+{
+  "featured": true,
+  "thumbnail": "",
+  "displayName": "Diploma Tracking System",
+  "shortDescription": "Full-stack academic diploma management platform for Universidad Nacional de Córdoba — React + Hono + Supabase + Allure. AI-driven 14-phase methodology from PRD to production.",
+  "category": "fullstack",
+  "tags": [
+    "react",
+    "hono",
+    "supabase",
+    "typescript",
+    "vite",
+    "mui",
+    "playwright",
+    "allure",
+    "vercel",
+    "i18n",
+    "diploma-tracking",
+    "unc",
+    "kata-testing"
+  ],
+  "order": 2,
+  "screenshots": [],
+  "links": {
+    "production": "https://diplomatrackingsystem.qzz.io",
+    "allure_staging": "https://nelgoez.github.io/diploma-tracking-sys/staging/smoke/",
+    "allure_production": "https://nelgoez.github.io/diploma-tracking-sys/production/smoke/",
+    "docs": "https://github.com/nelgoez/diploma-tracking-sys/tree/main/docs"
+  }
+}
