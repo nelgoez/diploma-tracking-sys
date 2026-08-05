@@ -1,0 +1,7 @@
+"DESCRIPTION","DURATION IN MS","NAME","PARENT SUITE","START TIME","STATUS","STOP TIME","SUB SUITE","SUITE","TEST CLASS","TEST METHOD"
+"","231","@prod page loads and login form is visible","chromium","2026-08-05","skipped","2026-08-05","@prod Production Validation","prod-smoke.spec.ts","",""
+"","162","@prod @critical student cannot access admin","chromium","2026-08-05","skipped","2026-08-05","@prod Production Validation","prod-smoke.spec.ts","",""
+"","191","@prod @critical admin can login and see dashboard","chromium","2026-08-05","skipped","2026-08-05","@prod Production Validation","prod-smoke.spec.ts","",""
+"","179","@prod browser back button does not cause 404","chromium","2026-08-05","skipped","2026-08-05","@prod Production Validation","prod-smoke.spec.ts","",""
+"","158","@prod page refresh does not cause 404 on any route","chromium","2026-08-05","skipped","2026-08-05","@prod Production Validation","prod-smoke.spec.ts","",""
+"","176","@prod admin nav shows correct items","chromium","2026-08-05","skipped","2026-08-05","@prod Production Validation","prod-smoke.spec.ts","",""
