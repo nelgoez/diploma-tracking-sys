@@ -41,7 +41,14 @@ export default function App() {
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="certificates" element={<CertificatesPage />} />
           <Route path="courses" element={<CoursesPage />} />
-          <Route path="integrations" element={<IntegrationsPage />} />
+          <Route
+            path="integrations"
+            element={(
+              <ProtectedRoute allowedRoles={['admin', 'sysadmin', 'coordinador']}>
+                <IntegrationsPage />
+              </ProtectedRoute>
+            )}
+          />
           <Route
             path="coordinator"
             element={(

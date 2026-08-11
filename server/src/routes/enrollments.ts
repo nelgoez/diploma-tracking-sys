@@ -9,6 +9,20 @@ import { createNotification } from '../services/notification.service';
 import { generateDiplomaForEnrollment } from '../services/pdf.service';
 import { evaluateTrackEligibility } from '../services/rule-engine';
 
+async function resolveStudentId(auth: { role: string, email: string }, urlId: string): Promise<string> {
+  if (auth.role === 'estudiante') {
+    const { data: ownStudent } = await supabaseAdmin
+      .from('students')
+      .select('id')
+      .eq('email', auth.email)
+      .single();
+    if (ownStudent) {
+      return ownStudent.id;
+    }
+  }
+  return urlId;
+}
+
 const enrollments = new Hono<{ Variables: HonoVariables }>();
 
 enrollments.use('/*', authenticate);
@@ -56,27 +70,42 @@ enrollments.get('/', async (c) => {
 });
 
 enrollments.get('/eligibility/:studentId', async (c) => {
+  const auth = c.get('auth');
   const { studentId } = c.req.param();
-  const trackId = c.req.query('track_id');
+  let trackId = c.req.query('track_id');
 
-  if (!trackId) {
-    return c.json({ error: 'track_id query parameter is required' }, 400);
-  }
+  const effectiveStudentId = await resolveStudentId(auth, studentId);
 
   const { data: student } = await supabaseAdmin
     .from('students')
     .select('*')
-    .eq('id', studentId)
+    .eq('id', effectiveStudentId)
     .single();
 
   if (!student) {
     return c.json({ error: 'Student not found' }, 404);
   }
 
+  if (!trackId) {
+    const { data: activeEnrollment } = await supabaseAdmin
+      .from('enrollments')
+      .select('track_id')
+      .eq('student_id', effectiveStudentId)
+      .eq('status', 'active')
+      .limit(1)
+      .maybeSingle();
+
+    if (!activeEnrollment) {
+      return c.json({ error: 'No active enrollment found for this student. Provide track_id query parameter.' }, 400);
+    }
+
+    trackId = activeEnrollment.track_id;
+  }
+
   const { data: enrollment } = await supabaseAdmin
     .from('enrollments')
     .select('*')
-    .eq('student_id', studentId)
+    .eq('student_id', effectiveStudentId)
     .eq('track_id', trackId)
     .limit(1)
     .maybeSingle();
@@ -86,7 +115,7 @@ enrollments.get('/eligibility/:studentId', async (c) => {
   }
 
   const result = await evaluateTrackEligibility({
-    studentId,
+    studentId: effectiveStudentId,
     trackId,
     ...createEligibilityDataAccess(),
   });

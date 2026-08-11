@@ -180,4 +180,27 @@ export const api = {
     }
     return res.json() as Promise<T>;
   },
+
+  async delete<T>(path: string, token: string): Promise<T> {
+    const res = await fetch(`${API_URL}${path}`, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (res.status === 401) {
+      const newToken = await handle401();
+      if (newToken) {
+        return api.delete<T>(path, newToken);
+      }
+      throw new Error('Session expired');
+    }
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: `API error ${res.status}` }));
+      throw new Error(err.error || `API error ${res.status}`);
+    }
+    return res.json() as Promise<T>;
+  },
 };

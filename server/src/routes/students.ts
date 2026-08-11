@@ -46,28 +46,39 @@ students.get('/', requireRole('admin', 'sysadmin', 'coordinador'), async (c) => 
   });
 });
 
-students.get('/:id', async (c) => {
-  const auth = c.get('auth');
-  const { id } = c.req.param();
-
+async function resolveStudentId(auth: { role: string, email: string }, urlId: string): Promise<{ studentId: string, error?: { status: number, message: string } }> {
   if (auth.role === 'estudiante') {
     const { data: ownStudent } = await supabaseAdmin
       .from('students')
       .select('id')
       .eq('email', auth.email)
       .single();
-    if (!ownStudent || ownStudent.id !== id) {
-      return c.json({ error: 'Forbidden' }, 403);
+    if (!ownStudent) {
+      return { studentId: '', error: { status: 403, message: 'Forbidden' } };
     }
+    return { studentId: ownStudent.id };
+  }
+  if (!['admin', 'sysadmin', 'coordinador'].includes(auth.role)) {
+    return { studentId: '', error: { status: 403, message: 'Forbidden' } };
+  }
+  return { studentId: urlId };
+}
+
+students.get('/:id', async (c) => {
+  const auth = c.get('auth');
+  const { id } = c.req.param();
+  const { studentId, error } = await resolveStudentId(auth, id);
+  if (error) {
+    return c.json({ error: error.message }, error.status as 403 | 500);
   }
 
-  const { data, error } = await supabaseAdmin
+  const { data, error: _dbError } = await supabaseAdmin
     .from('students')
     .select('*')
-    .eq('id', id)
+    .eq('id', studentId)
     .single();
 
-  if (error) {
+  if (_dbError) {
     return c.json({ error: 'Student not found' }, 404);
   }
 
@@ -76,28 +87,16 @@ students.get('/:id', async (c) => {
 
 students.get('/:id/progress', async (c) => {
   const auth = c.get('auth');
-  let { id } = c.req.param();
-
-  // For students, check data isolation — only allow access to own record
-  if (auth.role === 'estudiante') {
-    const { data: ownStudent } = await supabaseAdmin
-      .from('students')
-      .select('id')
-      .eq('email', auth.email)
-      .single();
-    if (!ownStudent || ownStudent.id !== id) {
-      return c.json({ error: 'Forbidden' }, 403);
-    }
-    id = ownStudent.id;
-  }
-  else if (!['admin', 'sysadmin', 'coordinador'].includes(auth.role)) {
-    return c.json({ error: 'Forbidden' }, 403);
+  const { id } = c.req.param();
+  const { studentId, error } = await resolveStudentId(auth, id);
+  if (error) {
+    return c.json({ error: error.message }, error.status as 403 | 500);
   }
 
   const { data: student } = await supabaseAdmin
     .from('students')
     .select('*')
-    .eq('id', id)
+    .eq('id', studentId)
     .single();
 
   if (!student) {
@@ -113,12 +112,12 @@ students.get('/:id/progress', async (c) => {
       qualification,
       course:courses(id, name, code, credits, order_index)
     `)
-    .eq('student_id', id);
+    .eq('student_id', studentId);
 
   const { data: certificates } = await supabaseAdmin
     .from('certificates')
     .select('course_id')
-    .eq('student_id', id)
+    .eq('student_id', studentId)
     .eq('status', 'approved')
     .eq('is_valid', true);
 
@@ -171,33 +170,22 @@ students.get('/:id/progress', async (c) => {
 
 students.get('/:id/certificates', async (c) => {
   const auth = c.get('auth');
-  let { id } = c.req.param();
-
-  if (auth.role === 'estudiante') {
-    const { data: ownStudent } = await supabaseAdmin
-      .from('students')
-      .select('id')
-      .eq('email', auth.email)
-      .single();
-    if (!ownStudent || ownStudent.id !== id) {
-      return c.json({ error: 'Forbidden' }, 403);
-    }
-    id = ownStudent.id;
-  }
-  else if (!['admin', 'sysadmin', 'coordinador'].includes(auth.role)) {
-    return c.json({ error: 'Forbidden' }, 403);
+  const { id } = c.req.param();
+  const { studentId, error } = await resolveStudentId(auth, id);
+  if (error) {
+    return c.json({ error: error.message }, error.status as 403 | 500);
   }
 
-  const { data, error } = await supabaseAdmin
+  const { data, error: _dbError } = await supabaseAdmin
     .from('certificates')
     .select(`
       *,
       course:courses(id, name, code, credits)
     `)
-    .eq('student_id', id)
+    .eq('student_id', studentId)
     .order('issue_date', { ascending: false });
 
-  if (error) {
+  if (_dbError) {
     return c.json({ error: 'Failed to fetch certificates' }, 500);
   }
 

@@ -27,6 +27,7 @@ import {
 } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { GradeExamModal } from '../components/GradeExamModal';
 import { api } from '../lib/api';
 
@@ -95,6 +96,7 @@ function EligibilityRing({ percentage }: { percentage: number }) {
 export function DashboardPage() {
   const { t } = useTranslation();
   const theme = useTheme();
+  const navigate = useNavigate();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
   const [progress, setProgress] = useState<StudentProgress | null>(null);
@@ -268,7 +270,7 @@ export function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card sx={{ gridArea: 'students' }}>
+        <Card sx={{ gridArea: 'students', cursor: 'pointer' }} onClick={() => { void navigate('/app/admin'); }}>
           <CardContent sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flex: 1 }}>
               <Box sx={{ p: 1, borderRadius: 2, bgcolor: 'rgba(75, 156, 211, 0.1)', display: 'flex' }}>
@@ -282,7 +284,7 @@ export function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card sx={{ gridArea: 'tracks' }}>
+        <Card sx={{ gridArea: 'tracks', cursor: 'pointer' }} onClick={() => { void navigate('/app/admin', { state: { tab: 'courses' } }); }}>
           <CardContent sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flex: 1 }}>
               <Box sx={{ p: 1, borderRadius: 2, bgcolor: 'rgba(46, 125, 91, 0.1)', display: 'flex' }}>
@@ -296,7 +298,7 @@ export function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card sx={{ gridArea: 'certs' }}>
+        <Card sx={{ gridArea: 'certs', cursor: 'pointer' }} onClick={() => { void navigate('/app/admin', { state: { tab: 'verifications' } }); }}>
           <CardContent sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flex: 1 }}>
               <Box sx={{ p: 1, borderRadius: 2, bgcolor: 'rgba(212, 168, 67, 0.1)', display: 'flex' }}>
@@ -310,7 +312,7 @@ export function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card sx={{ gridArea: 'eligibility' }}>
+        <Card sx={{ gridArea: 'eligibility', cursor: 'pointer' }} onClick={() => { void navigate('/app/coordinator'); }}>
           <CardContent sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flex: 1 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flex: 1 }}>

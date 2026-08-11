@@ -1,8 +1,12 @@
 import {
   ChevronRight as ChevronRightIcon,
+  Delete as DeleteIcon,
+  Edit as EditIcon,
   ExpandMore as ExpandMoreIcon,
   PersonAdd as PersonAddIcon,
   Search as SearchIcon,
+  ToggleOff as ToggleOffIcon,
+  ToggleOn as ToggleOnIcon,
 } from '@mui/icons-material';
 import {
   Box,
@@ -15,6 +19,7 @@ import {
   Dialog,
   DialogActions,
   DialogContent,
+  DialogContentText,
   DialogTitle,
   FormControl,
   IconButton,
@@ -136,24 +141,74 @@ export function AdminPage() {
   }, [tab, pagination.page, pagination.limit, debouncedSearch]);
 
   const [userDialog, setUserDialog] = useState(false);
+  const [editingUser, setEditingUser] = useState<Student | null>(null);
   const [newUser, setNewUser] = useState({ email: '', password: '', name: '', role: 'estudiante' });
   const [userError, setUserError] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState<Student | null>(null);
 
   const handleCreateUser = async () => {
     setUserError('');
-    if (!newUser.email || !newUser.password || !newUser.name) {
-      setUserError('Email, password, and name are required');
+    if (!newUser.email || !newUser.name) {
+      setUserError('Email and name are required');
       return;
     }
     try {
       const token = localStorage.getItem('token') || '';
-      await api.post('/admin/users', newUser, token);
+      if (editingUser) {
+        await api.put(`/admin/users/${editingUser.id}`, { name: newUser.name, role: newUser.role }, token);
+      }
+      else {
+        if (!newUser.password) {
+          setUserError('Password is required for new users');
+          return;
+        }
+        await api.post('/admin/users', newUser, token);
+      }
       setUserDialog(false);
+      setEditingUser(null);
       setNewUser({ email: '', password: '', name: '', role: 'estudiante' });
+      if (tab === 'students') { setPagination(prev => ({ ...prev, page: prev.page })); }
     }
     catch (err) {
-      setUserError(err instanceof Error ? err.message : 'Failed to create user');
+      setUserError(err instanceof Error ? err.message : 'Failed to save user');
     }
+  };
+
+  const handleToggleActive = async (student: Student) => {
+    try {
+      const token = localStorage.getItem('token') || '';
+      await api.put(`/admin/users/${student.id}`, { is_active: !student.is_active }, token);
+      setStudents(prev => prev.map(s => s.id === student.id ? { ...s, is_active: !s.is_active } : s));
+    }
+    catch {
+      // silently fail
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) { return; }
+    try {
+      const token = localStorage.getItem('token') || '';
+      await api.delete(`/admin/users/${deleteTarget.id}`, token);
+      setStudents(prev => prev.filter(s => s.id !== deleteTarget.id));
+    }
+    catch {
+      // silently fail
+    }
+    finally {
+      setDeleteTarget(null);
+    }
+  };
+
+  const handleEditUser = (student: Student) => {
+    setEditingUser(student);
+    setNewUser({
+      email: student.email,
+      password: '',
+      name: student.name,
+      role: student.role,
+    });
+    setUserDialog(true);
   };
 
   const tabs = [
@@ -218,8 +273,8 @@ export function AdminPage() {
               )
       )}
 
-      <Dialog open={userDialog} onClose={() => setUserDialog(false)} maxWidth="xs" fullWidth>
-        <DialogTitle>Create User</DialogTitle>
+      <Dialog open={userDialog} onClose={() => { setUserDialog(false); setEditingUser(null); }} maxWidth="xs" fullWidth>
+        <DialogTitle>{editingUser ? 'Edit User' : 'Create User'}</DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
             <TextField
@@ -227,6 +282,7 @@ export function AdminPage() {
               type="email"
               size="small"
               value={newUser.email}
+              disabled={!!editingUser}
               onChange={e => setNewUser(prev => ({ ...prev, email: e.target.value }))}
             />
             <TextField
@@ -235,13 +291,15 @@ export function AdminPage() {
               value={newUser.name}
               onChange={e => setNewUser(prev => ({ ...prev, name: e.target.value }))}
             />
-            <TextField
-              label="Password"
-              type="password"
-              size="small"
-              value={newUser.password}
-              onChange={e => setNewUser(prev => ({ ...prev, password: e.target.value }))}
-            />
+            {!editingUser && (
+              <TextField
+                label="Password"
+                type="password"
+                size="small"
+                value={newUser.password}
+                onChange={e => setNewUser(prev => ({ ...prev, password: e.target.value }))}
+              />
+            )}
             <FormControl size="small">
               <InputLabel>Role</InputLabel>
               <Select
@@ -261,8 +319,27 @@ export function AdminPage() {
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setUserDialog(false)}>Cancel</Button>
-          <Button variant="contained" onClick={() => void handleCreateUser()}>Create</Button>
+          <Button onClick={() => { setUserDialog(false); setEditingUser(null); }}>Cancel</Button>
+          <Button variant="contained" onClick={() => void handleCreateUser()}>{editingUser ? 'Save' : 'Create'}</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={!!deleteTarget} onClose={() => setDeleteTarget(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>Delete Student</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete
+            {' '}
+            <strong>{deleteTarget?.name}</strong>
+            {' '}
+            (
+            {deleteTarget?.email}
+            )? This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteTarget(null)}>Cancel</Button>
+          <Button variant="contained" color="error" onClick={() => void handleDelete()}>Delete</Button>
         </DialogActions>
       </Dialog>
 
@@ -310,12 +387,13 @@ export function AdminPage() {
                             <TableCell>Certificates</TableCell>
                             <TableCell>Enrollments</TableCell>
                             <TableCell>Status</TableCell>
+                            <TableCell sx={{ width: 140 }}>Actions</TableCell>
                           </TableRow>
                         </TableHead>
                         <TableBody>
                           {students.length === 0 && (
                             <TableRow>
-                              <TableCell colSpan={8} sx={{ border: 'none', p: 0 }}>
+                              <TableCell colSpan={9} sx={{ border: 'none', p: 0 }}>
                                 <EmptyState
                                   illustration={<NoSearchResults />}
                                   title={debouncedSearch ? 'No encontramos estudiantes' : 'No hay estudiantes registrados'}
@@ -352,9 +430,22 @@ export function AdminPage() {
                                     size="small"
                                   />
                                 </TableCell>
+                                <TableCell>
+                                  <Box sx={{ display: 'flex', gap: 0.5 }}>
+                                    <IconButton size="small" onClick={(e) => { e.stopPropagation(); handleEditUser(s); }} title="Edit">
+                                      <EditIcon fontSize="small" />
+                                    </IconButton>
+                                    <IconButton size="small" onClick={(e) => { e.stopPropagation(); void handleToggleActive(s); }} title={s.is_active ? 'Deactivate' : 'Activate'}>
+                                      {s.is_active ? <ToggleOffIcon fontSize="small" /> : <ToggleOnIcon fontSize="small" />}
+                                    </IconButton>
+                                    <IconButton size="small" onClick={(e) => { e.stopPropagation(); setDeleteTarget(s); }} title="Delete" color="error">
+                                      <DeleteIcon fontSize="small" />
+                                    </IconButton>
+                                  </Box>
+                                </TableCell>
                               </TableRow>
                               <TableRow>
-                                <TableCell sx={{ py: 0, borderBottom: expandedRow === s.id ? undefined : 'none' }} colSpan={8}>
+                                <TableCell sx={{ py: 0, borderBottom: expandedRow === s.id ? undefined : 'none' }} colSpan={9}>
                                   <Collapse in={expandedRow === s.id} timeout="auto" unmountOnExit>
                                     <Box sx={{ py: 2, px: 4 }}>
                                       <Typography variant="body2" color="text.secondary">
