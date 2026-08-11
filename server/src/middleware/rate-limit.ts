@@ -90,8 +90,7 @@ const resolveClientIp = (c: Parameters<MiddlewareHandler<{ Variables: HonoVariab
 
 export const rateLimitLogin = createRateLimiter({
   windowMs: 15 * 60 * 1000,
-  maxRequests: 5,
-  key: c => `login:${resolveClientIp(c)}`,
+  maxRequests: 15,
   skip: () => isTestEnv(),
 });
 
