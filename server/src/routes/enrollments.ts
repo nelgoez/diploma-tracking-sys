@@ -91,7 +91,7 @@ enrollments.get('/eligibility/:studentId', async (c) => {
       .from('enrollments')
       .select('track_id')
       .eq('student_id', effectiveStudentId)
-      .eq('status', 'active')
+      .in('status', ['active', 'in_progress'])
       .limit(1)
       .maybeSingle();
 
