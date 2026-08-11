@@ -16,6 +16,7 @@ import {
   Typography,
 } from '@mui/material';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 
 interface AdminStatsGridProps {
   stats: {
@@ -34,15 +35,16 @@ interface AdminStatsGridProps {
 
 export function AdminStatsGrid({ stats, showSyncAlert }: AdminStatsGridProps) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
 
   const statCards = [
-    { label: 'admin.stats.total_students', value: stats?.total_students ?? 0, icon: PeopleIcon, color: 'primary' as const },
-    { label: 'admin.stats.active_students', value: stats?.active_students ?? 0, icon: SchoolIcon, color: 'success' as const },
-    { label: 'admin.stats.active_tracks', value: stats?.active_tracks ?? 0, icon: AssignmentIcon, color: 'info' as const },
-    { label: 'admin.stats.certificates_issued', value: stats?.total_certificates ?? 0, icon: DiplomaIcon, color: 'secondary' as const },
+    { label: 'admin.stats.total_students', value: stats?.total_students ?? 0, icon: PeopleIcon, color: 'primary' as const, navigate: async () => navigate('/app/admin', { state: { tab: 'students' } }) },
+    { label: 'admin.stats.active_students', value: stats?.active_students ?? 0, icon: SchoolIcon, color: 'success' as const, navigate: async () => navigate('/app/admin', { state: { tab: 'students' } }) },
+    { label: 'admin.stats.active_tracks', value: stats?.active_tracks ?? 0, icon: AssignmentIcon, color: 'info' as const, navigate: async () => navigate('/app/sysadmin', { state: { tab: 'tracks' } }) },
+    { label: 'admin.stats.certificates_issued', value: stats?.total_certificates ?? 0, icon: DiplomaIcon, color: 'secondary' as const, navigate: async () => navigate('/app/admin', { state: { tab: 'verifications' } }) },
     { label: 'admin.stats.completion_rate', value: `${stats?.completion_rate ?? 0}%`, icon: TrendingUpIcon, color: 'info' as const },
-    { label: 'admin.stats.eligible', value: stats?.eligible_count ?? 0, icon: CheckCircleIcon, color: 'success' as const },
-    { label: 'admin.stats.not_eligible', value: stats?.not_eligible_count ?? 0, icon: CheckCircleIcon, color: 'error' as const },
+    { label: 'admin.stats.eligible', value: stats?.eligible_count ?? 0, icon: CheckCircleIcon, color: 'success' as const, navigate: async () => navigate('/app/coordinator') },
+    { label: 'admin.stats.not_eligible', value: stats?.not_eligible_count ?? 0, icon: CheckCircleIcon, color: 'error' as const, navigate: async () => navigate('/app/coordinator') },
     { label: 'admin.stats.pending_enrollments', value: stats?.pending_enrollments ?? 0, icon: AssignmentIcon, color: 'warning' as const },
   ];
 
@@ -52,7 +54,7 @@ export function AdminStatsGrid({ stats, showSyncAlert }: AdminStatsGridProps) {
         const Icon = stat.icon;
         return (
           <Grid size={{ xs: 12, sm: 6, md: 4 }} key={stat.label}>
-            <Card>
+            <Card sx={stat.navigate ? { cursor: 'pointer' } : undefined} onClick={() => { if (stat.navigate) { void stat.navigate(); } }}>
               <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                 <Icon color={stat.color} sx={{ fontSize: 40 }} />
                 <Box>

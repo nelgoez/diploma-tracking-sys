@@ -35,6 +35,7 @@ import {
   Typography,
 } from '@mui/material';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { CourseManagement } from '../components/CourseManagement';
 import { EmptyState, NoOverrides } from '../components/illustrations';
 import { PageHeader } from '../components/PageHeader';
@@ -108,6 +109,7 @@ interface OverrideItem {
 }
 
 export function SysAdminPage() {
+  const { t } = useTranslation();
   const token = localStorage.getItem('token') || '';
 
   const [tab, setTab] = useState<'courses' | 'tracks' | 'rules' | 'overrides' | 'diagnostics'>('courses');
@@ -510,11 +512,11 @@ export function SysAdminPage() {
   const courseNameById = (id: string) => courses.find(c => c.id === id)?.name || id;
 
   const tabs = [
-    { key: 'courses' as const, label: 'Courses' },
-    { key: 'tracks' as const, label: 'Tracks' },
-    { key: 'rules' as const, label: 'Rules' },
-    { key: 'overrides' as const, label: 'Overrides' },
-    { key: 'diagnostics' as const, label: 'Diagnostics' },
+    { key: 'courses' as const, label: t('sysadmin.tabs.courses') },
+    { key: 'tracks' as const, label: t('sysadmin.tabs.tracks') },
+    { key: 'rules' as const, label: t('sysadmin.tabs.rules') },
+    { key: 'overrides' as const, label: t('sysadmin.tabs.overrides') },
+    { key: 'diagnostics' as const, label: t('sysadmin.tabs.diagnostics') },
   ];
 
   const overrideStatusTabs: { key: typeof overrideStatusFilter, label: string }[] = [

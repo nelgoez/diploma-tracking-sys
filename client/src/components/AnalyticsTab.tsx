@@ -10,6 +10,7 @@ import {
   useTheme,
 } from '@mui/material';
 import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import { BarChart } from './charts/BarChart';
 import { LineChart } from './charts/LineChart';
@@ -59,6 +60,7 @@ function formatMonth(month: string) {
 
 export function AnalyticsTab() {
   const theme = useTheme();
+  const navigate = useNavigate();
   const token = localStorage.getItem('token') || '';
   const [enrollments, setEnrollments] = useState<EnrollmentData | null>(null);
   const [certificates, setCertificates] = useState<CertificateData | null>(null);
@@ -108,10 +110,10 @@ export function AnalyticsTab() {
     : null;
 
   const summaryCards = [
-    { label: 'Total Certificates', value: certificates?.total_certificates ?? null },
-    { label: 'Avg Grade', value: avgGrade !== null ? `${avgGrade}` : null },
-    { label: 'Completion Rate', value: completionRate !== null ? `${completionRate}%` : null },
-    { label: 'Most Popular Course', value: mostPopular },
+    { label: 'Total Certificates', value: certificates?.total_certificates ?? null, onClick: async () => navigate('/app/certificates') },
+    { label: 'Avg Grade', value: avgGrade !== null ? `${avgGrade}` : null, onClick: undefined },
+    { label: 'Completion Rate', value: completionRate !== null ? `${completionRate}%` : null, onClick: async () => navigate('/app/admin', { state: { tab: 'analytics' } }) },
+    { label: 'Most Popular Course', value: mostPopular, onClick: async () => navigate('/app/courses') },
   ];
 
   const lineLabels = enrollments?.monthly_trend.map(m => formatMonth(m.month)) ?? [];
@@ -171,7 +173,7 @@ export function AnalyticsTab() {
       <Grid container spacing={3}>
         {summaryCards.map(card => (
           <Grid size={{ xs: 12, sm: 6, md: 3 }} key={card.label}>
-            <Card>
+            <Card sx={card.onClick ? { cursor: 'pointer' } : undefined} onClick={() => { if (card.onClick) { void card.onClick(); } }}>
               <CardContent>
                 <Typography variant="body2" color="text.secondary" gutterBottom>
                   {card.label}

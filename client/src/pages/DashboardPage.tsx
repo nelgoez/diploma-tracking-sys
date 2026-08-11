@@ -531,8 +531,8 @@ export function DashboardPage() {
             : (
                 <Alert severity="warning">
                   {t('dashboard.missing_prerequisites')}
-                  :
-                  {eligibility?.missing_prerequisites.length}
+                  {': '}
+                  {eligibility?.missing_prerequisites?.length ?? 0}
                   {' '}
                   {t('dashboard.courses')}
                 </Alert>

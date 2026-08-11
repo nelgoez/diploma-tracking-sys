@@ -45,13 +45,6 @@ const navItems: NavItem[] = [
   { path: '/app/sysadmin', labelKey: 'nav.sysadmin', icon: AdminIcon, roles: ['sysadmin'] },
 ];
 
-const roleLabels: Record<string, string> = {
-  estudiante: 'Estudiante',
-  coordinador: 'Coordinador',
-  admin: 'Admin',
-  sysadmin: 'SysAdmin',
-};
-
 export function MainLayout() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -59,6 +52,13 @@ export function MainLayout() {
 
   const userRole = localStorage.getItem('userRole') || 'estudiante';
   const userName = localStorage.getItem('userName') || '';
+
+  const roleLabels: Record<string, string> = {
+    estudiante: t('role.estudiante'),
+    coordinador: t('role.coordinador'),
+    admin: t('role.admin'),
+    sysadmin: t('role.sysadmin'),
+  };
   const userEmail = (() => {
     const token = localStorage.getItem('token') || '';
     try {

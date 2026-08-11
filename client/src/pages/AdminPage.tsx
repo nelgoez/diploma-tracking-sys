@@ -38,6 +38,7 @@ import {
   Typography,
 } from '@mui/material';
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AdminStatsGrid } from '../components/AdminStatsGrid';
 import { AnalyticsTab } from '../components/AnalyticsTab';
 import { CourseManagement } from '../components/CourseManagement';
@@ -76,6 +77,7 @@ interface StudentsResponse {
 }
 
 export function AdminPage() {
+  const { t } = useTranslation();
   const [tab, setTab] = useState<'dashboard' | 'students' | 'courses' | 'analytics' | 'verifications'>('dashboard');
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -212,11 +214,11 @@ export function AdminPage() {
   };
 
   const tabs = [
-    { key: 'dashboard' as const, label: 'Dashboard' },
-    { key: 'students' as const, label: 'Students' },
-    { key: 'courses' as const, label: 'Courses' },
-    { key: 'analytics' as const, label: 'Analytics' },
-    { key: 'verifications' as const, label: 'Verificaciones' },
+    { key: 'dashboard' as const, label: t('admin.tabs.dashboard') },
+    { key: 'students' as const, label: t('admin.tabs.students') },
+    { key: 'courses' as const, label: t('admin.tabs.courses') },
+    { key: 'analytics' as const, label: t('admin.tabs.analytics') },
+    { key: 'verifications' as const, label: t('admin.tabs.verifications') },
   ];
 
   return (

@@ -23,13 +23,13 @@ export function BarChart({ items, title, height = 220 }: BarChartProps) {
   const displayH = Math.min(chartH, height);
 
   return (
-    <Box>
+    <Box sx={{ overflow: 'auto' }}>
       {title && (
         <Typography variant="subtitle2" color="text.secondary" gutterBottom>
           {title}
         </Typography>
       )}
-      <svg viewBox={`0 0 500 ${chartH}`} style={{ width: '100%', height: 'auto', maxHeight: displayH }}>
+      <svg viewBox={`0 0 500 ${chartH}`} style={{ width: '100%', height: 'auto', minHeight: displayH }}>
         {items.map((item, i) => {
           const y = i * (barH + gap) + 10;
           const barW = (item.value / maxVal) * (500 - labelW - 60);
