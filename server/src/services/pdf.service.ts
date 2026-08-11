@@ -1,6 +1,7 @@
 import type { Browser } from 'puppeteer';
 import type { DiplomaTemplateData } from './templates/diploma-template';
 import puppeteer from 'puppeteer';
+import QRCode from 'qrcode';
 import { supabaseAdmin } from '../db/supabase';
 import { logAudit } from './audit-log';
 import { renderDiplomaHtml } from './templates/diploma-template';
@@ -96,6 +97,12 @@ export async function generateDiplomaForEnrollment(
     const track = trackRes.data;
     const issueDate = enrollment.completion_date || new Date().toISOString().split('T')[0];
     const referenceCode = generateReferenceCode();
+    const verificationUrl = `${process.env.VITE_API_URL?.replace('/api/v1', '') || 'https://nelgoez-diploma-tracking-sys.vercel.app'}/verify/${referenceCode}`;
+    const qrCodeDataUri = await QRCode.toDataURL(verificationUrl, {
+      width: 200,
+      margin: 2,
+      errorCorrectionLevel: 'M',
+    });
 
     const pdfBuffer = await generateDiplomaPdf({
       studentName: student.name,
@@ -104,6 +111,8 @@ export async function generateDiplomaForEnrollment(
       issueDate: formatDate(issueDate),
       grade: enrollment.qualification || 0,
       referenceCode,
+      verificationUrl,
+      qrCodeDataUri,
     });
 
     const fileName = `diploma-${enrollmentId}.pdf`;

@@ -37,6 +37,41 @@ const MOCK_STUDENTS: AcademicStudent[] = [
     email: 'juan.pablo.gonzalez@mi.unc.edu.ar',
     documentNumber: '27456123',
   },
+  {
+    id: 'guarani-29555123',
+    firstName: 'Lucía Belén',
+    lastName: 'Sosa',
+    email: 'lucia.belen.sosa@mi.unc.edu.ar',
+    documentNumber: '29555123',
+  },
+  {
+    id: 'guarani-33678012',
+    firstName: 'Facundo Nicolás',
+    lastName: 'Pereyra',
+    email: 'facundo.nicolas.pereyra@mi.unc.edu.ar',
+    documentNumber: '33678012',
+  },
+  {
+    id: 'guarani-25890134',
+    firstName: 'Camila Andrea',
+    lastName: 'Torres',
+    email: 'camila.andrea.torres@mi.unc.edu.ar',
+    documentNumber: '25890134',
+  },
+  {
+    id: 'guarani-37123456',
+    firstName: 'Lautaro Ezequiel',
+    lastName: 'Díaz',
+    email: 'lautaro.ezequiel.diaz@mi.unc.edu.ar',
+    documentNumber: '37123456',
+  },
+  {
+    id: 'guarani-30567890',
+    firstName: 'Valentina Sol',
+    lastName: 'Romero',
+    email: 'valentina.sol.romero@mi.unc.edu.ar',
+    documentNumber: '30567890',
+  },
 ];
 
 const COURSE_NAMES: Record<string, string> = {
@@ -58,6 +93,11 @@ const MOCK_CERT_ASSIGNMENTS: MockCertAssignment[] = [
   { studentIndex: 2, courseCodes: ['CD-101', 'CD-102', 'CD-103', 'CD-104'] },
   { studentIndex: 3, courseCodes: ['CD-101', 'CD-102', 'CD-103', 'CD-104', 'CD-201'] },
   { studentIndex: 4, courseCodes: ['CD-101', 'CD-102', 'CD-103'] },
+  { studentIndex: 5, courseCodes: ['CD-101', 'CD-102'] },
+  { studentIndex: 6, courseCodes: ['CD-101', 'CD-102', 'CD-103', 'CD-104', 'CD-201'] },
+  { studentIndex: 7, courseCodes: ['CD-101', 'CD-102', 'CD-103', 'CD-104'] },
+  { studentIndex: 8, courseCodes: ['CD-101'] },
+  { studentIndex: 9, courseCodes: ['CD-101', 'CD-102', 'CD-103', 'CD-104', 'CD-201'] },
 ];
 
 function buildMockCertificates(studentId: string): Certificate[] {

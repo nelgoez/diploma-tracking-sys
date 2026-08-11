@@ -5,10 +5,12 @@ export interface DiplomaTemplateData {
   issueDate: string
   grade: number
   referenceCode: string
+  verificationUrl: string
+  qrCodeDataUri: string
 }
 
 export function renderDiplomaHtml(data: DiplomaTemplateData): string {
-  const { studentName, documentNumber, trackName, issueDate, grade, referenceCode } = data;
+  const { studentName, documentNumber, trackName, issueDate, grade, referenceCode, verificationUrl, qrCodeDataUri } = data;
 
   return `<!DOCTYPE html>
 <html lang="es">
@@ -156,6 +158,11 @@ export function renderDiplomaHtml(data: DiplomaTemplateData): string {
     padding: 2px 6px;
     border-radius: 3px;
   }
+  .footer .qr-code {
+    display: block;
+    margin: 0 auto 4mm;
+    image-rendering: pixelated;
+  }
 </style>
 </head>
 <body>
@@ -189,7 +196,8 @@ export function renderDiplomaHtml(data: DiplomaTemplateData): string {
     <div class="signature-line"></div>
     <div class="signature-label">Dirección de Educación Continua</div>
     <div class="verification">
-      Verifique este documento en: diplomatrackingsystem.qzz.io/verify<br>
+      <img class="qr-code" src="${escapeHtml(qrCodeDataUri)}" alt="QR de verificación" width="100" height="100"><br>
+      Verifique este documento en: ${escapeHtml(verificationUrl)}<br>
       Código de verificación: <code>${escapeHtml(referenceCode)}</code>
     </div>
   </div>

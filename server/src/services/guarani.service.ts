@@ -4,12 +4,13 @@ import type {
 } from '../providers/academic.provider';
 import type { ProviderHealth } from '../providers/certificate.provider';
 import { supabaseAdmin } from '../db/supabase';
+import { logAudit } from './audit-log';
 import { logPerStudent } from './integration-logs';
 import { getMockStudents } from './mock-data';
 import { withRetry } from './resilient-adapter';
 
 const GUARANI_URL = process.env.GUARANI_URL || 'https://guarani.unc.edu.ar/api';
-const GUARANI_TOKEN = process.env.GUARANI_TOKEN || '';
+const GUARANI_TOKEN = process.env.GUARANI_TOKEN || process.env.GUARANI_API_TOKEN || '';
 
 function isMockMode(): boolean {
   return process.env.MOCK_MODE === 'true';
@@ -211,9 +212,10 @@ class GuaraniServiceImpl implements AcademicProvider {
             await logPerStudent('guarani', existing.id, 'success', 'Updated from Guaraní (mock)');
           }
           else {
+            const conflictCol = s.id?.startsWith('guarani-') ? 'guarani_id' : 'email';
             const { error } = await supabaseAdmin
               .from('students')
-              .upsert([row], { onConflict: 'email' });
+              .upsert([row], { onConflict: conflictCol });
             if (error) { throw new Error(error.message); }
             studentsNew++;
           }
@@ -277,9 +279,10 @@ class GuaraniServiceImpl implements AcademicProvider {
           await logPerStudent('guarani', existing.id, 'success', 'Updated from Guaraní');
         }
         else {
+          const conflictCol = s.id?.startsWith('guarani-') ? 'guarani_id' : 'email';
           const { error } = await supabaseAdmin
             .from('students')
-            .upsert([row], { onConflict: 'email' });
+            .upsert([row], { onConflict: conflictCol });
           if (error) { throw new Error(error.message); }
           studentsNew++;
         }
@@ -352,9 +355,6 @@ class GuaraniServiceImpl implements AcademicProvider {
         course_name: diplomaData.courseName,
         guarani_reference: guaraniReference,
         pushed_at: pushedAt,
-        note: isConfigured()
-          ? 'Pushed to Guaraní API'
-          : 'Mock push — real Guaraní API pending DTI credentials',
       },
     });
 
@@ -371,6 +371,18 @@ class GuaraniServiceImpl implements AcademicProvider {
         .update({ exam_status: 'diploma_pendiente' })
         .eq('id', enrollment.id);
     }
+
+    await logAudit({
+      action: 'diploma_pushed',
+      entityType: 'diploma',
+      entityId: enrollment?.id,
+      details: {
+        student_id: studentId,
+        track_id: diplomaData.trackId,
+        grade: diplomaData.grade,
+        guarani_ref: guaraniReference,
+      },
+    });
 
     console.log(
       `[GuaraniService] Diploma pushed for ${studentId}: ref ${guaraniReference}`,
